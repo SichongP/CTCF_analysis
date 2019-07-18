@@ -1,0 +1,7 @@
+__default__:
+  partition: "high"
+  nodes: 1
+  cpus: "{threads}"
+  name: "{rule}.{wildcards}"
+  output: "logs/{rule}.{wildcards}.out"
+  time: "2-0"
