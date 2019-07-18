@@ -1,0 +1,12 @@
+name: bwa
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - _libgcc_mutex=0.1=main
+  - bwa=0.7.17=h84994c4_5
+  - libgcc-ng=9.1.0=hdf63c60_0
+  - perl=5.26.2=h516909a_1006
+  - zlib=1.2.11=h516909a_1005
+
