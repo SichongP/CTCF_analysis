@@ -5,7 +5,7 @@ __default__:
   tasks: 1
   name: "{rule}.{wildcards}"
   output: "logs_slurm/{rule}.{wildcards}.out"
-  time: "1-0"
+  time: "{params.time}"
   email: "scpeng@ucdavis.edu"
   email_type: "ALL"
   mem: "2g"
