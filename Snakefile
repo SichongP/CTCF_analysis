@@ -15,7 +15,9 @@ for filename in files:
 #print(names)
 
 rule all:
-    input: expand("Results/mapping/{sample}_sorted.bam.bai", sample = names)
+    input: 
+        expand("Results/mapping/{sample}_sorted.bam.bai", sample = names),
+        expand("Results/mapping/stats/{sample}.stats.txt", sample = names)
 
 rule sourmash_sig:
     input: "raw_data/{sample}.fq.gz"
@@ -72,7 +74,7 @@ rule sort_bam:
     input: "Results/mapping/{sample}.bam"
     output: "Results/mapping/{sample}_sorted.bam"
     conda: "envs/samtools.yaml"
-    params: time="1200"
+    params: time="180"
     threads: 4
     log: "logs/mapping/sort_bam_{sample}.log"
     benchmark: "benchmarks/mapping/sort_bam_{sample}.tsv"
@@ -86,11 +88,24 @@ rule index_bam:
     input: "Results/mapping/{sample}_sorted.bam"
     output: "Results/mapping/{sample}_sorted.bam.bai"
     conda: "envs/samtools.yaml"
-    params: time="600"
+    params: time="180"
     threads: 4
     log: "logs/mapping/index_bam_{sample}.log"
     benchmark: "benchmarks/mapping/index_bam_{sample}.tsv"
     shell:
      """
      samtools index -@ {threads} {input}
+     """
+
+rule bam_stat:
+    input: "Results/mapping/{sample}_sorted.bam"
+    output: "Results/mapping/stats/{sample}.stats.txt"
+    conda: "envs/sambamba.yaml"
+    params: time="60"
+    threads: 2
+    log: "logs/mapping/stat_bam_{sample}.log"
+    benchmark: "benchmarks/mapping/stat_bam_{sample}.tsv"
+    shell:
+     """
+     sambamba flagstat -t {threads} {input} 2>{log} 1>{output}
      """
