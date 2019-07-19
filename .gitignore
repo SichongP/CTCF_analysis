@@ -1,0 +1,7 @@
+Results_backup/
+benchmarks/
+Results/
+logs/
+logs_slurm/
+raw_data/
+slurm*.out
