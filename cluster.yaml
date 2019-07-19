@@ -2,6 +2,16 @@ __default__:
   partition: "high"
   nodes: 1
   cpus: "{threads}"
+  tasks: 1
   name: "{rule}.{wildcards}"
-  output: "logs/{rule}.{wildcards}.out"
-  time: "2-0"
+  output: "logs_slurm/{rule}.{wildcards}.out"
+  time: "1-0"
+  email: "scpeng@ucdavis.edu"
+  email_type: "ALL"
+  mem: "2g"
+
+bwa_mem:
+  mem: "30g"
+
+sort_bam:
+  mem: "5g"
