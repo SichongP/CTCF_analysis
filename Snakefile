@@ -1,3 +1,4 @@
+localrules: all, collect_stats
 import re
 import os
 # Get file names
@@ -15,9 +16,9 @@ for filename in files:
 #print(names)
 
 rule all:
-    input: 
-        expand("Results/mapping/{sample}_sorted.bam.bai", sample = names),
-        expand("Results/mapping/stats/{sample}.stats.txt", sample = names)
+    input:
+        expand("Results/mapping/{sample}_sorted.bam", sample = names),
+        "Results/metrics/mapping.stats"
 
 rule sourmash_sig:
     input: "raw_data/{sample}.fq.gz"
@@ -98,7 +99,9 @@ rule index_bam:
      """
 
 rule bam_stat:
-    input: "Results/mapping/{sample}_sorted.bam"
+    input:
+        bam = "Results/mapping/{sample}_sorted.bam",
+        bai = "Results/mapping/{sample}_sorted.bam.bai"
     output: "Results/mapping/stats/{sample}.stats.txt"
     conda: "envs/sambamba.yaml"
     params: time="60"
@@ -109,3 +112,10 @@ rule bam_stat:
      """
      sambamba flagstat -t {threads} {input} 2>{log} 1>{output}
      """
+
+rule collect_stats:
+    input: "Results/mapping/stats/"
+#expand("Results/mapping/stats/{sample}.stats.txt", sample = names), dir = "Results/mapping/stats/"
+    output: "Results/metrics/mapping.stats"
+    conda: "envs/stat_curator.yaml"
+    script: "tools/flagstat_curator.py"
