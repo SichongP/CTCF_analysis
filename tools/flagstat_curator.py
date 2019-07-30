@@ -41,7 +41,7 @@ def write_stats(stats, out, name):
 def main():
 #    in_dir = sys.argv[1]
 #    out_path = sys.argv[2]
-    in_dir = snakemake.input[0]
+    in_dir = snakemake.params['dir']
     out_path = snakemake.output[0]
     for dirpath, dirnames, filenames in os.walk(in_dir):
         files = filenames
