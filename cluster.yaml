@@ -21,3 +21,6 @@ macs2_filterdup:
 
 macs2_predictd:
   mem: "5g"
+
+get_pileup_cov:
+  mem: "5g"
