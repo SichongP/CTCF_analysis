@@ -1,4 +1,4 @@
-localrules: all, collect_stats
+localrules: all, collect_stats, collect_predictd
 import re
 import os
 # Get file names
@@ -25,7 +25,8 @@ rule all:
         expand("Results/mapping/{sample}_sorted.bam", sample = names),
         "Results/metrics/mapping_stats.csv",
         expand("Results/macs2/filterdup/{sample}_filterdup.bed", sample = names),
-        expand("Results/macs2/predictd/{sample}_predictedModel.R", sample = tissues)
+        expand("Results/macs2/predictd/{sample}_predictedModel.R", sample = tissues),
+        "Results/metrics/predictd_macs2.tsv"
 
 rule sourmash_sig:
     input: "raw_data/{sample}.fq.gz"
@@ -149,3 +150,10 @@ rule macs2_predictd:
      """
      macs2 predictd -g 2497530671 -i {input} -m 5 50 --rfile {wildcards.sample}_predictedModel.R --outdir Results/macs2/predictd/ 2> {log} 
      """
+
+rule collect_predictd:
+    input: expand("Results/macs2/predictd/{sample}_predictedModel.R", sample = tissues)
+    output: "Results/metrics/predictd_macs2.tsv"
+    log: "Results/logs/macs2/predictd/collect.log"
+    params: dir = "Results/logs/macs2/predictd/"
+    script: "tools/get_tagSize.py"
