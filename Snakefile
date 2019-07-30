@@ -20,13 +20,20 @@ for file in names:
         if name.group(1) not in tissues:
             tissues.append(name.group(1))
 
+def read_frag_length(wildcards):
+    with open(checkpoints.collect_predictd.get(sample=wildcards.sample).output[0]) as file:
+        for line in file:
+            sample, tag, frag = line.strip().split('\t')
+            if sample == wildcards.sample:
+                return frag
+
 rule all:
     input:
-        expand("Results/mapping/{sample}_sorted.bam", sample = names),
         "Results/metrics/mapping_stats.csv",
-        expand("Results/macs2/filterdup/{sample}_filterdup.bed", sample = names),
-        expand("Results/macs2/predictd/{sample}_predictedModel.R", sample = tissues),
-        "Results/metrics/predictd_macs2.tsv"
+#        expand("Results/macs2/filterdup/{sample}_filterdup.bed", sample = names),
+#        expand("Results/macs2/predictd/{sample}_predictedModel.R", sample = tissues),
+#        "Results/metrics/predictd_macs2.tsv",
+        expand("Results/macs2/pileup/{sample}_filterdup.pileup.bdg", sample = tissues)
 
 rule sourmash_sig:
     input: "raw_data/{sample}.fq.gz"
@@ -54,7 +61,7 @@ rule sourmash_abundance_trim:
 
 rule bwa_mem:
     input: "Results/sourmash_trimmed/{sample}.fq.gz.abundtrim"
-    output: "Results/mapping/{sample}.sam"
+    output: temp("Results/mapping/{sample}.sam")
     conda: "envs/bwa.yaml"
     params: time="1-0"
     threads: 4
@@ -67,7 +74,7 @@ rule bwa_mem:
 
 rule convert_sam:
     input: "Results/mapping/{sample}.sam"
-    output: "Results/mapping/{sample}.bam"
+    output: temp("Results/mapping/{sample}.bam")
     conda: "envs/samtools.yaml"
     params: time="360"
     threads: 4
@@ -76,7 +83,6 @@ rule convert_sam:
     shell:
      """
      samtools view -hb -@ {threads} {input} > {output}
-     rm {input}
      """
 
 rule sort_bam:
@@ -90,7 +96,6 @@ rule sort_bam:
     shell:
      """
      samtools sort -@ {threads} -m 1G -o {output} {input}
-     rm {input}
      """
 
 rule index_bam:
@@ -151,9 +156,23 @@ rule macs2_predictd:
      macs2 predictd -g 2497530671 -i {input} -m 5 50 --rfile {wildcards.sample}_predictedModel.R --outdir Results/macs2/predictd/ 2> {log} 
      """
 
-rule collect_predictd:
+checkpoint collect_predictd:
     input: expand("Results/macs2/predictd/{sample}_predictedModel.R", sample = tissues)
     output: "Results/metrics/predictd_macs2.tsv"
     log: "Results/logs/macs2/predictd/collect.log"
     params: dir = "Results/logs/macs2/predictd/"
     script: "tools/get_tagSize.py"
+
+rule get_pileup_cov:
+    input: 
+        tsv = "Results/metrics/predictd_macs2.tsv",
+        bed = "Results/macs2/filterdup/{sample}_filterdup.bed"
+    output: "Results/macs2/pileup/{sample}_filterdup.pileup.bdg"
+    log: "Results/logs/macs2/pileup/{sample}_pileup.log"
+    benchmark: "Results/benchmarks/macs2/{sample}_pileup.tsv"
+    params: time = "30", frag_len = read_frag_length
+    conda: "envs/macs.yaml"
+    shell:
+     """
+     macs2 pileup -i {input.bed} -o {output} -f BED --extsize {params.frag_len}
+     """
