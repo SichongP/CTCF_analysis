@@ -15,3 +15,9 @@ bwa_mem:
 
 sort_bam:
   mem: "5g"
+
+macs2_filterdup:
+  mem: "5g"
+
+macs2_predictd:
+  mem: "5g"
