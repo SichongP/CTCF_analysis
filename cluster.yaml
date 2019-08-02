@@ -24,3 +24,9 @@ macs2_predictd:
 
 get_pileup_cov:
   mem: "5g"
+
+callpeak:
+  mem: "5g"
+
+concensus_peaks:
+  mem: "4g"
