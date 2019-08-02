@@ -1,7 +1,11 @@
-localrules: all, collect_stats, collect_predictd
+localrules: all, collect_stats, collect_predictd, macs2_get_filterdup_metrics, install_mspc, getNarrowpeaks
 import re
 import os
+
+configfile: "config.yaml"
+
 # Get file names
+## File names should be in the format of: rep_tissue(_Input).fq.gz
 files = []
 for dirpath, dirname, filenames in os.walk("raw_data/"):
     files.extend(filenames)
@@ -13,12 +17,14 @@ for filename in files:
     if name:
         names.append(name.group(1))
 
-tissues = []
-for file in names:
-    name = re.match(r"(.+?)_Input", file)
-    if name:
-        if name.group(1) not in tissues:
-            tissues.append(name.group(1))
+tissues = config['tissues']
+#for file in names:
+#    name = re.match(r"(.+?)_Input", file)
+#    if name:
+#        if name.group(1) not in tissues:
+#            tissues.append(name.group(1))
+
+reps = config['reps']
 
 def read_frag_length(wildcards):
     with open(checkpoints.collect_predictd.get(sample=wildcards.sample).output[0]) as file:
@@ -27,13 +33,27 @@ def read_frag_length(wildcards):
             if sample == wildcards.sample:
                 return frag
 
+def get_filtered_read_count(wildcards):
+    with open(checkpoints.macs2_get_filterdup_metrics.get(sample=wildcards.sample).output[0]) as file:
+        for line in file:
+            sample, total, filter = line.strip().split('\t')
+            if sample == wildcards.sample:
+                return filter
+
+def calc_genome_bg(wildcards):
+    read_count = get_filtered_read_count(wildcards)
+    frag_len = read_frag_length(wildcards)
+    return read_count * frag_len / config['genome_size']
+
 rule all:
     input:
         "Results/metrics/mapping_stats.csv",
 #        expand("Results/macs2/filterdup/{sample}_filterdup.bed", sample = names),
 #        expand("Results/macs2/predictd/{sample}_predictedModel.R", sample = tissues),
 #        "Results/metrics/predictd_macs2.tsv",
-        expand("Results/macs2/pileup/{sample}_filterdup.pileup.bdg", sample = tissues)
+#        "Results/metrics/macs2_filterdup.tsv",
+#        expand("Results/macs2/pileup/{sample}_filterdup.pileup.bdg", sample = tissues)
+        expand("Results/peaks/{sample}.concensus.bed", sample = tissues)
 
 rule sourmash_sig:
     input: "raw_data/{sample}.fq.gz"
@@ -142,8 +162,15 @@ rule macs2_filterdup:
     benchmark: "Results/benchmarks/macs2/{sample}_filterdup.tsv"
     shell:
      """
-     macs2 filterdup -g 2497530671 -f BAM -i {input} -o {output} --keep-dup auto 2> {log}
+     macs2 filterdup -g {config[genome_size]} -f BAM -i {input} -o {output} --keep-dup auto 2> {log}
      """
+
+checkpoint macs2_get_filterdup_metrics:
+    input: expand("Results/macs2/filterdup/{sample}_filterdup.bed", sample = names)
+    output: "Results/metrics/macs2_filterdup.tsv"
+    log: "Results/logs/macs2/filterdup/collect.log"
+    params: dir = "Results/logs/macs2/filterdup/"
+    script: "tools/get_filterdup_metrics.py"
 
 rule macs2_predictd:
     input: "Results/macs2/filterdup/{sample}_filterdup.bed"
@@ -153,11 +180,11 @@ rule macs2_predictd:
     params: time="30"
     shell:
      """
-     macs2 predictd -g 2497530671 -i {input} -m 5 50 --rfile {wildcards.sample}_predictedModel.R --outdir Results/macs2/predictd/ 2> {log} 
+     macs2 predictd -g {config[genome_size]} -i {input} -m 5 50 --rfile {wildcards.sample}_predictedModel.R --outdir Results/macs2/predictd/ 2> {log} 
      """
 
 checkpoint collect_predictd:
-    input: expand("Results/macs2/predictd/{sample}_predictedModel.R", sample = tissues)
+    input: expand("Results/macs2/predictd/{rep}_{sample}_predictedModel.R", rep = reps, sample = tissues)
     output: "Results/metrics/predictd_macs2.tsv"
     log: "Results/logs/macs2/predictd/collect.log"
     params: dir = "Results/logs/macs2/predictd/"
@@ -175,4 +202,87 @@ rule get_pileup_cov:
     shell:
      """
      macs2 pileup -i {input.bed} -o {output} -f BED --extsize {params.frag_len}
+     """
+
+rule slocal_bg:
+    input: "Results/macs2/filterdup/{sample}_filterdup.bed"
+    output: "Results/macs2/background/{sample}_slocal_bg.bdg"
+    log: "Results/logs/macs2/background/{sample}_slocal.log"
+    benchmark: "Results/benchmarks/macs2/{sample}_slocal.tsv"
+    params: time = "30"
+    conda: "envs/macs.yaml"
+    shell:
+     """
+     macs2 pileup -i {input} -B --extsize 500 -o {output} -f BED
+     """
+
+rule llocal_bg:
+    input: "Results/macs2/filterdup/{sample}_filterdup.bed"
+    output: "Results/macs2/background/{sample}_llocal_bg.bdg"
+    log: "Results/logs/macs2/background/{sample}_llocal.log"
+    benchmark: "Results/benchmarks/macs2/{sample}_llocal.tsv"
+    params: time = "30"
+    conda: "envs/macs.yaml"
+    shell:
+     """
+     macs2 pileup -i {input} -B --extsize 5000 -o {output} -f BED
+     """
+
+rule d_bg:
+    input: "Results/macs2/filterdup/{sample}_filterdup.bed"
+    output: "Results/macs2/background/{sample}_d_bg.bdg"
+    log: "Results/logs/macs2/background/{sample}_d_bg.log"
+    benchmark: "Results/benchmarks/macs2/{sample}_d_bg.tsv"
+    params: time = "30", frag_len = read_frag_length
+    conda: "envs/macs.yaml"
+    shell:
+     """
+     macs2 pileup -i {input} -B -o {output} -f BED --extsize <(echo "{params.frag_len}/2")
+     """
+
+rule callpeak:
+    input: 
+        treatment = "Results/mapping/{sample}_sorted.bam",
+        control = "Results/mapping/{sample}_Input_sorted.bam"
+    output: "Results/macs2/{sample}_peaks.narrowPeak"
+    log: "Results/logs/macs2/{sample}_callpeak.log"
+    benchmark: "Results/benchmarks/macs2/{sample}_callpeak.tsv"
+    params: time = "60"
+    conda: "envs/macs.yaml"
+    shell:
+     """
+     macs2 callpeak -t {input.treatment} -c {input.control} -n {wildcards.sample} --outdir "Results/macs2/" -B --SPMR -g {config[genome_size]} --keep-dup auto 2> {log}
+     """
+
+rule getNarrowpeaks:
+    input: "Results/macs2/{sample}_peaks.narrowPeak"
+    output: temp("Results/peaks/{sample}.bed")
+    conda: "envs/blank.yaml"
+    shell:
+     """
+     cut -f 1,2,3,4,8 {input} > {output}
+     """
+
+rule install_mspc:
+    output: "tools/mspc/dotnet", "tools/mspc/CLI.dll"
+    log: "Results/logs/mspc/installation.log"
+    conda: "envs/blank.yaml"
+    shell:
+     """
+     bash tools/mspc_install.sh &> {log}
+     """
+
+rule concensus_peaks:
+    input:
+        tool = "tools/mspc/CLI.dll",
+        repA = expand("Results/peaks/{rep}_{{sample}}.bed", rep = reps[0]),
+        repB = expand("Results/peaks/{rep}_{{sample}}.bed", rep = reps[1])
+    output: "Results/peaks/{sample}.concensus.bed"
+    log: "Results/logs/mspc/{sample}_concensus_call.log"
+    conda: "envs/blank.yaml"
+    params: time = "10"
+    shell:
+     """
+     tools/mspc/dotnet tools/mspc/CLI.dll -i {input.repA} -i {input.repB}  -r biological -w 1e-4 -s 1e-8 -a 0.05 -o Results/peaks/{wildcards.sample}/ &> {log}
+     cp Results/peaks/{wildcards.sample}/ConsensusPeaks.bed Results/peaks/{wildcards.sample}.concensus.bed
      """
