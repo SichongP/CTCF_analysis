@@ -1,0 +1,7 @@
+name: blank
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+prefix: /home/pengsc/bin/miniconda3/envs/blank
+
