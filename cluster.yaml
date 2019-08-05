@@ -30,3 +30,12 @@ callpeak:
 
 concensus_peaks:
   mem: "4g"
+
+multiBigwigSummary:
+  mem: "20g"
+
+bamCompare:
+  mem: "10g"
+
+plotFingerprint_all:
+  mem: "4g"
