@@ -1,4 +1,4 @@
-localrules: all, collect_stats, collect_predictd, macs2_get_filterdup_metrics, install_mspc, getNarrowpeaks
+localrules: all, collect_stats, collect_predictd, macs2_get_filterdup_metrics, install_mspc, getNarrowpeaks, gatherJSD
 import re
 import os
 
@@ -48,12 +48,16 @@ def calc_genome_bg(wildcards):
 rule all:
     input:
         "Results/metrics/mapping_stats.csv",
+        "Results/figures/PCA.png",
+        "Results/figures/Fingerprint.png",
+        "Results/metrics/QC_metrics.tsv",
 #        expand("Results/macs2/filterdup/{sample}_filterdup.bed", sample = names),
 #        expand("Results/macs2/predictd/{sample}_predictedModel.R", sample = tissues),
 #        "Results/metrics/predictd_macs2.tsv",
 #        "Results/metrics/macs2_filterdup.tsv",
 #        expand("Results/macs2/pileup/{sample}_filterdup.pileup.bdg", sample = tissues)
         expand("Results/peaks/{sample}.concensus.bed", sample = tissues)
+#        expand("Results/metrics/{rep}_{sample}_LibraryQC.tsv", sample = tissues, rep = reps)
 
 rule sourmash_sig:
     input: "raw_data/{sample}.fq.gz"
@@ -92,6 +96,23 @@ rule bwa_mem:
      bwa mem -t {threads} -R "@RG\\tID:{wildcards.sample}\\tSM:{wildcards.sample}\\tPL:illumina" -o {output} ~/reference/equcab3/equcab3_RefSeq_bwa {input}
      """
 
+rule markDup:
+    input: bam = "Results/mapping/{sample}_sorted.bam",
+        bai = "Results/mapping/{sample}_sorted.bam.bai"
+    output: bam = "Results/mapping/{sample}_markdup.bam",
+        bai = "Results/mapping/{sample}_markdup.bam.bai"
+    conda: "envs/sambamba.yaml"
+    params: time = "120"
+    log: "Results/logs/mapping/{sample}_markdup.log"
+    benchmark: "Results/benchmarks/mapping/{sample}_markdup.tsv"
+    threads: 4
+    shell:
+     """
+     sambamba markdup -t {threads} --tmpdir=/scratch/peng/{wildcards.sample}_markdup/ {input.bam} {output.bam} &> {log}
+     rm -rf /scratch/peng/{wildcards.sample}_markdup/
+     mv {input.bai} {output.bai}
+     """
+
 rule convert_sam:
     input: "Results/mapping/{sample}.sam"
     output: temp("Results/mapping/{sample}.bam")
@@ -107,7 +128,7 @@ rule convert_sam:
 
 rule sort_bam:
     input: "Results/mapping/{sample}.bam"
-    output: "Results/mapping/{sample}_sorted.bam"
+    output: temp("Results/mapping/{sample}_sorted.bam")
     conda: "envs/samtools.yaml"
     params: time="180"
     threads: 4
@@ -115,7 +136,7 @@ rule sort_bam:
     benchmark: "Results/benchmarks/mapping/sort_bam_{sample}.tsv"
     shell:
      """
-     samtools sort -@ {threads} -m 1G -o {output} {input}
+     samtools sort -@ {threads} -m 1G -T /scratch/peng/{sample} -o {output} {input}
      """
 
 rule index_bam:
@@ -133,8 +154,7 @@ rule index_bam:
 
 rule bam_stat:
     input:
-        bam = "Results/mapping/{sample}_sorted.bam",
-        bai = "Results/mapping/{sample}_sorted.bam.bai"
+        bam = "Results/mapping/{sample}_markdup.bam",
     output: "Results/mapping/stats/{sample}.stats.txt"
     conda: "envs/sambamba.yaml"
     params: time="60"
@@ -285,4 +305,75 @@ rule concensus_peaks:
      """
      tools/mspc/dotnet tools/mspc/CLI.dll -i {input.repA} -i {input.repB}  -r biological -w 1e-4 -s 1e-8 -a 0.05 -o Results/peaks/{wildcards.sample}/ &> {log}
      cp Results/peaks/{wildcards.sample}/ConsensusPeaks.bed Results/peaks/{wildcards.sample}.concensus.bed
+     """
+
+rule multiBigwigSummary:
+    input: expand("Results/deeptools/bigwig/{rep}_{sample}_scaled.bw", sample = tissues, rep = reps)
+    output: "Results/deeptools/multiBigwigSummary.npz"
+    conda: "envs/deeptools.yaml"
+    threads: 8
+    params: time = "120"
+    log: "Results/logs/deeptools/multiBamSummary.log"
+    shell:
+     """
+     multiBigwigSummary bins --bwfiles {input} -o {output} --smartLabels -p {threads} &> {log}
+     """
+
+rule bamCompare:
+    input: exp = "Results/mapping/{sample}_sorted.bam",
+        ctrl = "Results/mapping/{sample}_Input_sorted.bam"
+    output: "Results/deeptools/bigwig/{sample}_scaled.bw"
+    conda: "envs/deeptools.yaml"
+    threads: 6
+    params: time = "120"
+    log: "Results/logs/deeptools/bamCompare_{sample}.log"
+    shell:
+     """
+     bamCompare -b1 {input.exp} -b2 {input.ctrl} -o {output} -p {threads} --ignoreDuplicates --scaleFactorsMethod SES --effectiveGenomeSize {config[genome_size]} &> {log}
+     """
+
+rule plotFingerprint_all:
+    input: expand("Results/mapping/{rep}_{sample}_sorted.bam", rep = reps, sample = tissues)
+    output: 
+        plot = "Results/figures/Fingerprint.png",
+    conda: "envs/deeptools.yaml"
+    params: time = "360"
+    threads: 4
+    log: "Results/logs/deeptools/fingerprint.log"
+    shell:
+     """
+     plotFingerprint --bamfiles {input} -o {output.plot} -p {threads} --skipZeros -T "Fingerprint plot" --smartLabels --ignoreDuplicates 
+     """
+
+rule calcJSD:
+    input: 
+        trt = "Results/mapping/{sample}_sorted.bam",
+        ctrl = "Results/mapping/{sample}_Input_sorted.bam"
+    output: 
+        metric = temp("Results/metrics/{sample}_LibraryQC.tsv"),
+        plot = "Results/figures/{sample}_Fingerprint.png"
+    conda: "envs/deeptools.yaml"
+    params: time = "60"
+    threads: 4
+    log: "Results/logs/deeptools/{sample}_JSD.log"
+    shell:
+     """
+     plotFingerprint --bamfiles {input.trt} {input.ctrl} -o {output.plot} --outQualityMetrics {output.metric} --JSDsample {input.ctrl} -p {threads} --skipZeros -T "Fingerprint plot" --smartLabels --ignoreDuplicates 
+     """
+
+rule gatherJSD:
+    input: expand("Results/metrics/{rep}_{tissue}_LibraryQC.tsv", rep = reps, tissue = tissues)
+    output: "Results/metrics/QC_metrics.tsv"
+    script: "tools/gatherJSD.py"
+    
+rule plotPCA:
+    input: "Results/deeptools/multiBigwigSummary.npz"
+    output: "Results/figures/PCA.png"
+    conda: "envs/deeptools.yaml"
+    params: time = "60"
+    threads: 4
+    log: "Results/logs/deeptools/pca.log"
+    shell:
+     """
+     plotPCA --corData {input} -o {output} -T "PCA plot" --outFileNameData "Results/metrics/pca.tab" --transpose &> {log}
      """
