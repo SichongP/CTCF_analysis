@@ -7,22 +7,13 @@ __default__:
   output: "logs_slurm/{rule}.{wildcards}.out"
   time: "{params.time}"
   email: "scpeng@ucdavis.edu"
-  email_type: "ALL"
+  email_type: "FAIL"
   mem: "2g"
 
 bwa_mem:
   mem: "30g"
 
 sort_bam:
-  mem: "5g"
-
-macs2_filterdup:
-  mem: "5g"
-
-macs2_predictd:
-  mem: "5g"
-
-get_pileup_cov:
   mem: "5g"
 
 callpeak:
