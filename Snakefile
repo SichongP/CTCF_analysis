@@ -1,4 +1,5 @@
-localrules: all, collect_stats, collect_predictd, macs2_get_filterdup_metrics, install_mspc, getNarrowpeaks, gatherJSD
+localrules: all, collect_stats, install_mspc, getNarrowpeaks, gatherJSD, collect_filtered_stats
+ruleorder: filter_bam > convert_sam
 import re
 import os
 
@@ -48,9 +49,14 @@ def calc_genome_bg(wildcards):
 rule all:
     input:
         "Results/metrics/mapping_stats.csv",
+        "Results/metrics/filtered_stats.csv",
         "Results/figures/PCA.png",
-        "Results/figures/Fingerprint.png",
+#        "Results/figures/Fingerprint.png",
         "Results/metrics/QC_metrics.tsv",
+        "Results/figures/scatterplot_spearman.png",
+        "Results/figures/scatterplot_pearson.png",
+        "Results/figures/heatmap_spearman.png",
+        "Results/figures/heatmap_pearson.png",
 #        expand("Results/macs2/filterdup/{sample}_filterdup.bed", sample = names),
 #        expand("Results/macs2/predictd/{sample}_predictedModel.R", sample = tissues),
 #        "Results/metrics/predictd_macs2.tsv",
@@ -113,6 +119,29 @@ rule markDup:
      mv {input.bai} {output.bai}
      """
 
+rule filter_bam:
+    input: bam = "Results/mapping/{sample}_markdup.bam",
+        bai = "Results/mapping/{sample}_markdup.bam.bai"
+    output: "Results/mapping/{sample}_filtered.bam"
+    conda: "envs/samtools.yaml"
+    threads: 4
+    params: time = "90"
+    shell:
+     """
+     samtools view -@ {threads} -F 772 -h -q 20 {input.bam} | grep -v XA:Z | grep -v SA:Z | samtools view -S -b - > {output}
+     """
+
+rule index_filtered:
+    input: "Results/mapping/{sample}_filtered.bam"
+    output: "Results/mapping/{sample}_filtered.bam.bai"
+    conda: "envs/samtools.yaml"
+    params: time = "60"
+    threads: 4
+    shell:
+     """
+     samtools index -@ {threads} {input}
+     """
+
 rule convert_sam:
     input: "Results/mapping/{sample}.sam"
     output: temp("Results/mapping/{sample}.bam")
@@ -153,8 +182,7 @@ rule index_bam:
      """
 
 rule bam_stat:
-    input:
-        bam = "Results/mapping/{sample}_markdup.bam",
+    input: "Results/mapping/{sample}_markdup.bam"
     output: "Results/mapping/stats/{sample}.stats.txt"
     conda: "envs/sambamba.yaml"
     params: time="60"
@@ -166,6 +194,18 @@ rule bam_stat:
      sambamba flagstat -t {threads} {input} 2>{log} 1>{output}
      """
 
+rule filtered_stat:
+    input: "Results/mapping/{sample}_filtered.bam"
+    output: "Results/mapping/filtered_stats/{sample}.stats.txt"
+    conda: "envs/sambamba.yaml"
+    params: time = "60"
+    threads: 2
+    log: "Results/logs/mapping/stat_filtered_{sample}.tsv"
+    shell:
+     """
+     sambamba flagstat -t {threads} {input} 1>{output} 2>{log}
+     """
+
 rule collect_stats:
     input: expand("Results/mapping/stats/{sample}.stats.txt", sample = names)
     params: dir = "Results/mapping/stats/"
@@ -173,97 +213,19 @@ rule collect_stats:
     conda: "envs/stat_curator.yaml"
     script: "tools/flagstat_curator.py"
 
-rule macs2_filterdup:
-    input: "Results/mapping/{sample}_sorted.bam"
-    output: "Results/macs2/filterdup/{sample}_filterdup.bed"
-    params: time="30"
-    conda: "envs/macs.yaml"
-    log: "Results/logs/macs2/filterdup/{sample}_filterdup.log"
-    benchmark: "Results/benchmarks/macs2/{sample}_filterdup.tsv"
-    shell:
-     """
-     macs2 filterdup -g {config[genome_size]} -f BAM -i {input} -o {output} --keep-dup auto 2> {log}
-     """
-
-checkpoint macs2_get_filterdup_metrics:
-    input: expand("Results/macs2/filterdup/{sample}_filterdup.bed", sample = names)
-    output: "Results/metrics/macs2_filterdup.tsv"
-    log: "Results/logs/macs2/filterdup/collect.log"
-    params: dir = "Results/logs/macs2/filterdup/"
-    script: "tools/get_filterdup_metrics.py"
-
-rule macs2_predictd:
-    input: "Results/macs2/filterdup/{sample}_filterdup.bed"
-    output: "Results/macs2/predictd/{sample}_predictedModel.R"
-    log: "Results/logs/macs2/predictd/{sample}_predictd.log"
-    conda: "envs/macs.yaml"
-    params: time="30"
-    shell:
-     """
-     macs2 predictd -g {config[genome_size]} -i {input} -m 5 50 --rfile {wildcards.sample}_predictedModel.R --outdir Results/macs2/predictd/ 2> {log} 
-     """
-
-checkpoint collect_predictd:
-    input: expand("Results/macs2/predictd/{rep}_{sample}_predictedModel.R", rep = reps, sample = tissues)
-    output: "Results/metrics/predictd_macs2.tsv"
-    log: "Results/logs/macs2/predictd/collect.log"
-    params: dir = "Results/logs/macs2/predictd/"
-    script: "tools/get_tagSize.py"
-
-rule get_pileup_cov:
-    input: 
-        tsv = "Results/metrics/predictd_macs2.tsv",
-        bed = "Results/macs2/filterdup/{sample}_filterdup.bed"
-    output: "Results/macs2/pileup/{sample}_filterdup.pileup.bdg"
-    log: "Results/logs/macs2/pileup/{sample}_pileup.log"
-    benchmark: "Results/benchmarks/macs2/{sample}_pileup.tsv"
-    params: time = "30", frag_len = read_frag_length
-    conda: "envs/macs.yaml"
-    shell:
-     """
-     macs2 pileup -i {input.bed} -o {output} -f BED --extsize {params.frag_len}
-     """
-
-rule slocal_bg:
-    input: "Results/macs2/filterdup/{sample}_filterdup.bed"
-    output: "Results/macs2/background/{sample}_slocal_bg.bdg"
-    log: "Results/logs/macs2/background/{sample}_slocal.log"
-    benchmark: "Results/benchmarks/macs2/{sample}_slocal.tsv"
-    params: time = "30"
-    conda: "envs/macs.yaml"
-    shell:
-     """
-     macs2 pileup -i {input} -B --extsize 500 -o {output} -f BED
-     """
-
-rule llocal_bg:
-    input: "Results/macs2/filterdup/{sample}_filterdup.bed"
-    output: "Results/macs2/background/{sample}_llocal_bg.bdg"
-    log: "Results/logs/macs2/background/{sample}_llocal.log"
-    benchmark: "Results/benchmarks/macs2/{sample}_llocal.tsv"
-    params: time = "30"
-    conda: "envs/macs.yaml"
-    shell:
-     """
-     macs2 pileup -i {input} -B --extsize 5000 -o {output} -f BED
-     """
-
-rule d_bg:
-    input: "Results/macs2/filterdup/{sample}_filterdup.bed"
-    output: "Results/macs2/background/{sample}_d_bg.bdg"
-    log: "Results/logs/macs2/background/{sample}_d_bg.log"
-    benchmark: "Results/benchmarks/macs2/{sample}_d_bg.tsv"
-    params: time = "30", frag_len = read_frag_length
-    conda: "envs/macs.yaml"
-    shell:
-     """
-     macs2 pileup -i {input} -B -o {output} -f BED --extsize <(echo "{params.frag_len}/2")
-     """
+rule collect_filtered_stats:
+    input: expand("Results/mapping/filtered_stats/{sample}.stats.txt", sample = names)
+    params: dir = "Results/mapping/filtered_stats/"
+    output: "Results/metrics/filtered_stats.csv"
+    conda: "envs/stat_curator.yaml"
+    script: "tools/flagstat_curator.py"
 
 rule callpeak:
     input: 
-        treatment = "Results/mapping/{sample}_sorted.bam",
-        control = "Results/mapping/{sample}_Input_sorted.bam"
+        treatment = "Results/mapping/{sample}_filtered.bam",
+        control = "Results/mapping/{sample}_Input_filtered.bam",
+        trt_bai = "Results/mapping/{sample}_filtered.bam.bai", 
+        ctrl_bai = "Results/mapping/{sample}_Input_filtered.bam.bai"
     output: "Results/macs2/{sample}_peaks.narrowPeak"
     log: "Results/logs/macs2/{sample}_callpeak.log"
     benchmark: "Results/benchmarks/macs2/{sample}_callpeak.tsv"
@@ -320,20 +282,23 @@ rule multiBigwigSummary:
      """
 
 rule bamCompare:
-    input: exp = "Results/mapping/{sample}_sorted.bam",
-        ctrl = "Results/mapping/{sample}_Input_sorted.bam"
+    input: exp = "Results/mapping/{sample}_filtered.bam",
+        exp_bai = "Results/mapping/{sample}_filtered.bam.bai",
+        ctrl = "Results/mapping/{sample}_Input_filtered.bam",
+        ctrl_bai = "Results/mapping/{sample}_Input_filtered.bam.bai"
     output: "Results/deeptools/bigwig/{sample}_scaled.bw"
     conda: "envs/deeptools.yaml"
     threads: 6
     params: time = "120"
     log: "Results/logs/deeptools/bamCompare_{sample}.log"
+    benchmark: "Results/benchmarks/deeptools/{sample}_bamCompare.tsv"
     shell:
      """
-     bamCompare -b1 {input.exp} -b2 {input.ctrl} -o {output} -p {threads} --ignoreDuplicates --scaleFactorsMethod SES --effectiveGenomeSize {config[genome_size]} &> {log}
+     bamCompare -b1 {input.exp} -b2 {input.ctrl} -o {output} -p {threads} --scaleFactorsMethod SES --effectiveGenomeSize {config[genome_size]} --ignoreDuplicates &> {log}
      """
 
 rule plotFingerprint_all:
-    input: expand("Results/mapping/{rep}_{sample}_sorted.bam", rep = reps, sample = tissues)
+    input: expand("Results/mapping/{rep}_{sample}_filtered.bam", rep = reps, sample = tissues)
     output: 
         plot = "Results/figures/Fingerprint.png",
     conda: "envs/deeptools.yaml"
@@ -342,13 +307,15 @@ rule plotFingerprint_all:
     log: "Results/logs/deeptools/fingerprint.log"
     shell:
      """
-     plotFingerprint --bamfiles {input} -o {output.plot} -p {threads} --skipZeros -T "Fingerprint plot" --smartLabels --ignoreDuplicates 
+     plotFingerprint --bamfiles {input} -o {output.plot} -p {threads} --skipZeros -T "Fingerprint plot" --smartLabels
      """
 
 rule calcJSD:
     input: 
-        trt = "Results/mapping/{sample}_sorted.bam",
-        ctrl = "Results/mapping/{sample}_Input_sorted.bam"
+        trt = "Results/mapping/{sample}_filtered.bam",
+        ctrl = "Results/mapping/{sample}_Input_filtered.bam",
+        trt_bai = "Results/mapping/{sample}_filtered.bam.bai", 
+        ctrl_bai = "Results/mapping/{sample}_Input_filtered.bam.bai"
     output: 
         metric = temp("Results/metrics/{sample}_LibraryQC.tsv"),
         plot = "Results/figures/{sample}_Fingerprint.png"
@@ -356,9 +323,10 @@ rule calcJSD:
     params: time = "60"
     threads: 4
     log: "Results/logs/deeptools/{sample}_JSD.log"
+    benchmark: "Results/benchmarks/{sample}_JSD.tsv"
     shell:
      """
-     plotFingerprint --bamfiles {input.trt} {input.ctrl} -o {output.plot} --outQualityMetrics {output.metric} --JSDsample {input.ctrl} -p {threads} --skipZeros -T "Fingerprint plot" --smartLabels --ignoreDuplicates 
+     plotFingerprint --bamfiles {input.trt} {input.ctrl} -o {output.plot} --outQualityMetrics {output.metric} --JSDsample {input.ctrl} -p {threads} --skipZeros -T "Fingerprint plot" --smartLabels --ignoreDuplicates
      """
 
 rule gatherJSD:
@@ -377,3 +345,52 @@ rule plotPCA:
      """
      plotPCA --corData {input} -o {output} -T "PCA plot" --outFileNameData "Results/metrics/pca.tab" --transpose &> {log}
      """
+
+rule plotCorrelationHM_spearman:
+    input: "Results/deeptools/multiBigwigSummary.npz"
+    output: "Results/figures/heatmap_spearman.png"
+    conda: "envs/deeptools.yaml"
+    params: time = "60"
+    threads: 4
+    log: "Results/logs/deeptools/heatmap_spearman.log"
+    shell:
+     """
+     plotCorrelation -in {input} -c spearman -p heatmap --skipZeros -o {output} --removeOutliers --plotTitle "Spearman correlation of average scores per bin"
+     """
+
+rule plotCorrelationHM_pearson:
+    input: "Results/deeptools/multiBigwigSummary.npz"
+    output: "Results/figures/heatmap_pearson.png"
+    conda: "envs/deeptools.yaml"
+    params: time = "60"
+    threads: 4
+    log: "Results/logs/deeptools/heatmap_pearson.log"
+    shell:
+     """
+     plotCorrelation -in {input} -c pearson -p heatmap --skipZeros -o {output} --removeOutliers --plotTitle "Pearson correlation of average scores per bin"
+     """
+
+rule plotCorrelationSP_pearson:
+    input: "Results/deeptools/multiBigwigSummary.npz"
+    output: "Results/figures/scatterplot_pearson.png"
+    conda: "envs/deeptools.yaml"
+    params: time = "60"
+    threads: 4
+    log: "Results/logs/deeptools/scatterplot_pearson.log"
+    shell:
+     """
+     plotCorrelation -in {input} -c pearson -p scatterplot --skipZeros -o {output} --removeOutliers --plotTitle "Pearson correlation of average scores per bin"
+     """
+
+rule plotCorrelationSP_spearman:
+    input: "Results/deeptools/multiBigwigSummary.npz"
+    output: "Results/figures/scatterplot_spearman.png"
+    conda: "envs/deeptools.yaml"
+    params: time = "60"
+    threads: 4
+    log: "Results/logs/deeptools/scatterplot_spearman.log"
+    shell:
+     """
+     plotCorrelation -in {input} -c spearman -p scatterplot --skipZeros -o {output} --removeOutliers --plotTitle "Spearman correlation of average scores per bin"
+     """
+
