@@ -30,3 +30,6 @@ bamCompare:
 
 plotFingerprint_all:
   mem: "4g"
+
+spp_stats:
+  mem: "8g"
