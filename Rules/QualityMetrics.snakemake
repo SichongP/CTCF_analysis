@@ -12,13 +12,27 @@ localrules: gatherJSD
 #Results/figures/
 ###
 
+rule spp_stats:
+    input: "Results/mapping/{sample}_filtered.bam"
+    output: 
+        stat = "Results/metrics/spp/{sample}_spp_stats.txt",
+        fig = "Results/figures/{sample}_Cross_Correlation.pdf"
+    threads: 6
+    params: time="90"
+    conda: "../envs/spp_stats.yaml"
+    shell:
+     """
+     Rscript tools/run_spp.R -c={input} -rf -out={output.stat} -p={threads} -s=0:2:400 -savp={output.fig}
+     """
+    
+
 rule bamCompare:
     input: exp = "Results/mapping/{sample}_filtered.bam",
         exp_bai = "Results/mapping/{sample}_filtered.bam.bai",
         ctrl = "Results/mapping/{sample}_Input_filtered.bam",
         ctrl_bai = "Results/mapping/{sample}_Input_filtered.bam.bai"
     output: "Results/deeptools/bigwig/{sample}_scaled.bw"
-    conda: "envs/deeptools.yaml"
+    conda: "../envs/deeptools.yaml"
     threads: 6
     params: time = "120"
     log: "Results/logs/deeptools/bamCompare_{sample}.log"
@@ -31,7 +45,7 @@ rule bamCompare:
 rule multiBigwigSummary:
     input: expand("Results/deeptools/bigwig/{rep}_{sample}_scaled.bw", sample = tissues, rep = reps)
     output: "Results/deeptools/multiBigwigSummary.npz"
-    conda: "envs/deeptools.yaml"
+    conda: "../envs/deeptools.yaml"
     threads: 8
     params: time = "120"
     log: "Results/logs/deeptools/multiBamSummary.log"
@@ -44,7 +58,7 @@ rule plotFingerprint_all:
     input: expand("Results/mapping/{rep}_{sample}_filtered.bam", rep = reps, sample = tissues)
     output:
         plot = "Results/figures/Fingerprint.png",
-    conda: "envs/deeptools.yaml"
+    conda: "../envs/deeptools.yaml"
     params: time = "360"
     threads: 4
     log: "Results/logs/deeptools/fingerprint.log"
@@ -62,7 +76,7 @@ rule calcJSD:
     output:
         metric = temp("Results/metrics/{sample}_LibraryQC.tsv"),
         plot = "Results/figures/fingerprints/{sample}_Fingerprint.png"
-    conda: "envs/deeptools.yaml"
+    conda: "../envs/deeptools.yaml"
     params: time = "60"
     threads: 4
     log: "Results/logs/deeptools/{sample}_JSD.log"
@@ -80,7 +94,7 @@ rule gatherJSD:
 rule plotPCA:
     input: "Results/deeptools/multiBigwigSummary.npz"
     output: "Results/figures/PCA.png"
-    conda: "envs/deeptools.yaml"
+    conda: "../envs/deeptools.yaml"
     params: time = "60"
     threads: 4
     log: "Results/logs/deeptools/pca.log"
@@ -92,7 +106,7 @@ rule plotPCA:
 rule plotCorrelationHM_spearman:
     input: "Results/deeptools/multiBigwigSummary.npz"
     output: "Results/figures/heatmap_spearman.png"
-    conda: "envs/deeptools.yaml"
+    conda: "../envs/deeptools.yaml"
     params: time = "60"
     threads: 4
     log: "Results/logs/deeptools/heatmap_spearman.log"
@@ -104,7 +118,7 @@ rule plotCorrelationHM_spearman:
 rule plotCorrelationHM_pearson:
     input: "Results/deeptools/multiBigwigSummary.npz"
     output: "Results/figures/heatmap_pearson.png"
-    conda: "envs/deeptools.yaml"
+    conda: "../envs/deeptools.yaml"
     params: time = "60"
     threads: 4
     log: "Results/logs/deeptools/heatmap_pearson.log"
@@ -116,7 +130,7 @@ rule plotCorrelationHM_pearson:
 rule plotCorrelationSP_pearson:
     input: "Results/deeptools/multiBigwigSummary.npz"
     output: "Results/figures/scatterplot_pearson.png"
-    conda: "envs/deeptools.yaml"
+    conda: "../envs/deeptools.yaml"
     params: time = "60"
     threads: 4
     log: "Results/logs/deeptools/scatterplot_pearson.log"
@@ -128,7 +142,7 @@ rule plotCorrelationSP_pearson:
 rule plotCorrelationSP_spearman:
     input: "Results/deeptools/multiBigwigSummary.npz"
     output: "Results/figures/scatterplot_spearman.png"
-    conda: "envs/deeptools.yaml"
+    conda: "../envs/deeptools.yaml"
     params: time = "60"
     threads: 4
     log: "Results/logs/deeptools/scatterplot_spearman.log"

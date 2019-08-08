@@ -16,7 +16,7 @@ localrules: collect_stats, collect_filtered_stats
 rule bam_stat:
     input: "Results/mapping/{sample}_markdup.bam"
     output: "Results/mapping/stats/{sample}.stats.txt"
-    conda: "envs/sambamba.yaml"
+    conda: "../envs/sambamba.yaml"
     params: time="60"
     threads: 2
     log: "Results/logs/mapping/stat_bam_{sample}.log"
@@ -29,7 +29,7 @@ rule bam_stat:
 rule filtered_stat:
     input: "Results/mapping/{sample}_filtered.bam"
     output: "Results/mapping/filtered_stats/{sample}.stats.txt"
-    conda: "envs/sambamba.yaml"
+    conda: "../envs/sambamba.yaml"
     params: time = "60"
     threads: 2
     log: "Results/logs/mapping/stat_filtered_{sample}.tsv"
@@ -42,13 +42,13 @@ rule collect_stats:
     input: expand("Results/mapping/stats/{sample}.stats.txt", sample = names)
     params: dir = "Results/mapping/stats/"
     output: "Results/metrics/mapping_stats.csv"
-    conda: "envs/stat_curator.yaml"
+    conda: "../envs/stat_curator.yaml"
     script: "tools/flagstat_curator.py"
 
 rule collect_filtered_stats:
     input: expand("Results/mapping/filtered_stats/{sample}.stats.txt", sample = names)
     params: dir = "Results/mapping/filtered_stats/"
     output: "Results/metrics/filtered_stats.csv"
-    conda: "envs/stat_curator.yaml"
+    conda: "../envs/stat_curator.yaml"
     script: "tools/flagstat_curator.py"
 

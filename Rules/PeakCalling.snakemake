@@ -22,7 +22,7 @@ rule callpeak:
     log: "Results/logs/macs2/{sample}_callpeak.log"
     benchmark: "Results/benchmarks/macs2/{sample}_callpeak.tsv"
     params: time = "60"
-    conda: "envs/macs.yaml"
+    conda: "../envs/macs.yaml"
     shell:
      """
      macs2 callpeak -t {input.treatment} -c {input.control} -n {wildcards.sample} --outdir "Results/macs2/" -B --SPMR -g {config[genome_size]} --keep-dup auto 2> {log}
@@ -31,7 +31,7 @@ rule callpeak:
 rule getNarrowpeaks:
     input: "Results/macs2/{sample}_peaks.narrowPeak"
     output: temp("Results/peaks/{sample}.bed")
-    conda: "envs/blank.yaml"
+    conda: "../envs/blank.yaml"
     shell:
      """
      cut -f 1,2,3,4,8 {input} > {output}
@@ -40,7 +40,7 @@ rule getNarrowpeaks:
 rule install_mspc:
     output: "tools/mspc/dotnet", "tools/mspc/CLI.dll"
     log: "Results/logs/mspc/installation.log"
-    conda: "envs/blank.yaml"
+    conda: "../envs/blank.yaml"
     shell:
      """
      bash tools/mspc_install.sh &> {log}
@@ -53,7 +53,7 @@ rule concensus_peaks:
         repB = expand("Results/peaks/{rep}_{{sample}}.bed", rep = reps[1])
     output: "Results/peaks/{sample}.concensus.bed"
     log: "Results/logs/mspc/{sample}_concensus_call.log"
-    conda: "envs/blank.yaml"
+    conda: "../envs/blank.yaml"
     params: time = "10"
     shell:
      """

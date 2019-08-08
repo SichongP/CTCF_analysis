@@ -19,7 +19,7 @@
 rule bwa_mem:
     input: "Results/sourmash_trimmed/{sample}.fq.gz.abundtrim"
     output: temp("Results/mapping/{sample}.sam")
-    conda: "envs/bwa.yaml"
+    conda: "../envs/bwa.yaml"
     params: time="1-0"
     threads: 4
     log: "Results/logs/mapping/bwa_{sample}.log"
@@ -33,7 +33,7 @@ rule bwa_mem:
 rule convert_sam:
     input: "Results/mapping/{sample}.sam"
     output: temp("Results/mapping/{sample}.bam")
-    conda: "envs/samtools.yaml"
+    conda: "../envs/samtools.yaml"
     params: time="360"
     threads: 4
     log: "Results/logs/mapping/samtools_convert_{sample}.log"
@@ -46,7 +46,7 @@ rule convert_sam:
 rule sort_bam:
     input: "Results/mapping/{sample}.bam"
     output: temp("Results/mapping/{sample}_sorted.bam")
-    conda: "envs/samtools.yaml"
+    conda: "../envs/samtools.yaml"
     params: time="180"
     threads: 4
     log: "Results/logs/mapping/sort_bam_{sample}.log"
@@ -59,7 +59,7 @@ rule sort_bam:
 rule index_bam:
     input: "Results/mapping/{sample}_sorted.bam"
     output: "Results/mapping/{sample}_sorted.bam.bai"
-    conda: "envs/samtools.yaml"
+    conda: "../envs/samtools.yaml"
     params: time="180"
     threads: 4
     log: "Results/logs/mapping/index_bam_{sample}.log"
@@ -74,7 +74,7 @@ rule markDup:
         bai = "Results/mapping/{sample}_sorted.bam.bai"
     output: bam = "Results/mapping/{sample}_markdup.bam",
         bai = "Results/mapping/{sample}_markdup.bam.bai"
-    conda: "envs/sambamba.yaml"
+    conda: "../envs/sambamba.yaml"
     params: time = "120"
     log: "Results/logs/mapping/{sample}_markdup.log"
     benchmark: "Results/benchmarks/mapping/{sample}_markdup.tsv"
@@ -90,7 +90,7 @@ rule filter_bam:
     input: bam = "Results/mapping/{sample}_markdup.bam",
         bai = "Results/mapping/{sample}_markdup.bam.bai"
     output: "Results/mapping/{sample}_filtered.bam"
-    conda: "envs/samtools.yaml"
+    conda: "../envs/samtools.yaml"
     threads: 4
     params: time = "90"
     shell:
@@ -101,7 +101,7 @@ rule filter_bam:
 rule index_filtered:
     input: "Results/mapping/{sample}_filtered.bam"
     output: "Results/mapping/{sample}_filtered.bam.bai"
-    conda: "envs/samtools.yaml"
+    conda: "../envs/samtools.yaml"
     params: time = "60"
     threads: 4
     shell:
@@ -113,10 +113,10 @@ rule index_filtered:
 rule bamToBed:
     input: bam = "Results/mapping/{sample}_filtered.bam", bai = "Results/mapping/{sample}_filtered.bam.bai"
     output: "Results/mapping/beds/{sample}.bed"
-    conda: "envs/bedtools.yaml"
+    conda: "../envs/bedtools.yaml"
     params: time = "60"
     shell:
      """
-     bamToBed -i {input} > {output}
+     bamToBed -i {input.bam} > {output}
      """
 

@@ -64,7 +64,8 @@ rule all:
 #        "Results/metrics/macs2_filterdup.tsv",
 #        expand("Results/macs2/pileup/{sample}_filterdup.pileup.bdg", sample = tissues)
         expand("Results/peaks/{sample}.concensus.bed", sample = tissues),
-        expand("Results/mapping/beds/{rep}_{tissue}.bed", rep = reps, tissue = tissues)
+        expand("Results/mapping/beds/{rep}_{tissue}.bed", rep = reps, tissue = tissues),
+        expand("Results/figures/{rep}_{tissue}_Cross_Correlation.pdf", rep = reps, tissue = tissues)
 #        expand("Results/metrics/{rep}_{sample}_LibraryQC.tsv", sample = tissues, rep = reps)
 
 rule sourmash_sig:
