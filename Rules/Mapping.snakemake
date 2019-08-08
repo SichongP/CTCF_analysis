@@ -1,0 +1,122 @@
+###
+#This rule collection describes rules to align qc-passed reads to a reference genome, quality filter reads, sort, and index mapped reads.
+###
+
+###
+#Input: Results/sourmash_trimmed/{sample}.fq.gz.abundtrim
+###
+
+###
+#config:
+###
+
+###
+#Output: 
+#Results/mapping/{sample}_filtered.bam
+#Results/mapping/{sample}_filtered.bam.bai
+###
+
+rule bwa_mem:
+    input: "Results/sourmash_trimmed/{sample}.fq.gz.abundtrim"
+    output: temp("Results/mapping/{sample}.sam")
+    conda: "envs/bwa.yaml"
+    params: time="1-0"
+    threads: 4
+    log: "Results/logs/mapping/bwa_{sample}.log"
+    benchmark: "Results/benchmarks/mapping/{sample}.tsv"
+    shell:
+     """
+     bwa mem -t {threads} -R "@RG\\tID:{wildcards.sample}\\tSM:{wildcards.sample}\\tPL:illumina" -o {output} ~/reference/equcab3/equcab3_RefSeq_bwa {input}
+     """
+
+
+rule convert_sam:
+    input: "Results/mapping/{sample}.sam"
+    output: temp("Results/mapping/{sample}.bam")
+    conda: "envs/samtools.yaml"
+    params: time="360"
+    threads: 4
+    log: "Results/logs/mapping/samtools_convert_{sample}.log"
+    benchmark: "Results/benchmarks/mapping/convert_{sample}.tsv"
+    shell:
+     """
+     samtools view -hb -@ {threads} {input} > {output}
+     """
+
+rule sort_bam:
+    input: "Results/mapping/{sample}.bam"
+    output: temp("Results/mapping/{sample}_sorted.bam")
+    conda: "envs/samtools.yaml"
+    params: time="180"
+    threads: 4
+    log: "Results/logs/mapping/sort_bam_{sample}.log"
+    benchmark: "Results/benchmarks/mapping/sort_bam_{sample}.tsv"
+    shell:
+     """
+     samtools sort -@ {threads} -m 1G -T /scratch/peng/{sample} -o {output} {input}
+     """
+
+rule index_bam:
+    input: "Results/mapping/{sample}_sorted.bam"
+    output: "Results/mapping/{sample}_sorted.bam.bai"
+    conda: "envs/samtools.yaml"
+    params: time="180"
+    threads: 4
+    log: "Results/logs/mapping/index_bam_{sample}.log"
+    benchmark: "Results/benchmarks/mapping/index_bam_{sample}.tsv"
+    shell:
+     """
+     samtools index -@ {threads} {input}
+     """
+
+rule markDup:
+    input: bam = "Results/mapping/{sample}_sorted.bam",
+        bai = "Results/mapping/{sample}_sorted.bam.bai"
+    output: bam = "Results/mapping/{sample}_markdup.bam",
+        bai = "Results/mapping/{sample}_markdup.bam.bai"
+    conda: "envs/sambamba.yaml"
+    params: time = "120"
+    log: "Results/logs/mapping/{sample}_markdup.log"
+    benchmark: "Results/benchmarks/mapping/{sample}_markdup.tsv"
+    threads: 4
+    shell:
+     """
+     sambamba markdup -t {threads} --tmpdir=/scratch/peng/{wildcards.sample}_markdup/ {input.bam} {output.bam} &> {log}
+     rm -rf /scratch/peng/{wildcards.sample}_markdup/
+     mv {input.bai} {output.bai}
+     """
+
+rule filter_bam:
+    input: bam = "Results/mapping/{sample}_markdup.bam",
+        bai = "Results/mapping/{sample}_markdup.bam.bai"
+    output: "Results/mapping/{sample}_filtered.bam"
+    conda: "envs/samtools.yaml"
+    threads: 4
+    params: time = "90"
+    shell:
+     """
+     samtools view -@ {threads} -F 772 -h -q 20 {input.bam} | grep -v XA:Z | grep -v SA:Z | samtools view -S -b - > {output}
+     """
+
+rule index_filtered:
+    input: "Results/mapping/{sample}_filtered.bam"
+    output: "Results/mapping/{sample}_filtered.bam.bai"
+    conda: "envs/samtools.yaml"
+    params: time = "60"
+    threads: 4
+    shell:
+     """
+     samtools index -@ {threads} {input}
+     """
+
+
+rule bamToBed:
+    input: bam = "Results/mapping/{sample}_filtered.bam", bai = "Results/mapping/{sample}_filtered.bam.bai"
+    output: "Results/mapping/beds/{sample}.bed"
+    conda: "envs/bedtools.yaml"
+    params: time = "60"
+    shell:
+     """
+     bamToBed -i {input} > {output}
+     """
+

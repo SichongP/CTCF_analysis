@@ -1,0 +1,63 @@
+localrules: getNarrowpeaks
+###
+#This rule collection describes rules to call peaks on mapped data, and generate concensus peaks from replicates
+###
+
+###Input
+#Results/mapping/{sample}_filtered.bam, Results/mapping/{sample}_Input_filtered.bam
+###
+
+###Output
+#Results/peaks/{tissue}.concensus.bed
+###
+
+
+rule callpeak:
+    input:
+        treatment = "Results/mapping/{sample}_filtered.bam",
+        control = "Results/mapping/{sample}_Input_filtered.bam",
+        trt_bai = "Results/mapping/{sample}_filtered.bam.bai",
+        ctrl_bai = "Results/mapping/{sample}_Input_filtered.bam.bai"
+    output: "Results/macs2/{sample}_peaks.narrowPeak"
+    log: "Results/logs/macs2/{sample}_callpeak.log"
+    benchmark: "Results/benchmarks/macs2/{sample}_callpeak.tsv"
+    params: time = "60"
+    conda: "envs/macs.yaml"
+    shell:
+     """
+     macs2 callpeak -t {input.treatment} -c {input.control} -n {wildcards.sample} --outdir "Results/macs2/" -B --SPMR -g {config[genome_size]} --keep-dup auto 2> {log}
+     """
+
+rule getNarrowpeaks:
+    input: "Results/macs2/{sample}_peaks.narrowPeak"
+    output: temp("Results/peaks/{sample}.bed")
+    conda: "envs/blank.yaml"
+    shell:
+     """
+     cut -f 1,2,3,4,8 {input} > {output}
+     """
+
+rule install_mspc:
+    output: "tools/mspc/dotnet", "tools/mspc/CLI.dll"
+    log: "Results/logs/mspc/installation.log"
+    conda: "envs/blank.yaml"
+    shell:
+     """
+     bash tools/mspc_install.sh &> {log}
+     """
+
+rule concensus_peaks:
+    input:
+        tool = "tools/mspc/CLI.dll",
+        repA = expand("Results/peaks/{rep}_{{sample}}.bed", rep = reps[0]),
+        repB = expand("Results/peaks/{rep}_{{sample}}.bed", rep = reps[1])
+    output: "Results/peaks/{sample}.concensus.bed"
+    log: "Results/logs/mspc/{sample}_concensus_call.log"
+    conda: "envs/blank.yaml"
+    params: time = "10"
+    shell:
+     """
+     tools/mspc/dotnet tools/mspc/CLI.dll -i {input.repA} -i {input.repB}  -r biological -w 1e-4 -s 1e-8 -a 0.05 -o Results/peaks/{wildcards.sample}/ &> {log}
+     cp Results/peaks/{wildcards.sample}/ConsensusPeaks.bed Results/peaks/{wildcards.sample}.concensus.bed
+     """
+
