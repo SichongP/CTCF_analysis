@@ -43,12 +43,12 @@ rule collect_stats:
     params: dir = "Results/mapping/stats/"
     output: "Results/metrics/mapping_stats.csv"
     conda: "../envs/stat_curator.yaml"
-    script: "tools/flagstat_curator.py"
+    script: "../tools/flagstat_curator.py"
 
 rule collect_filtered_stats:
     input: expand("Results/mapping/filtered_stats/{sample}.stats.txt", sample = names)
     params: dir = "Results/mapping/filtered_stats/"
     output: "Results/metrics/filtered_stats.csv"
     conda: "../envs/stat_curator.yaml"
-    script: "tools/flagstat_curator.py"
+    script: "../tools/flagstat_curator.py"
 

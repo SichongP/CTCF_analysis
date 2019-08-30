@@ -39,7 +39,7 @@ rule bamCompare:
     benchmark: "Results/benchmarks/deeptools/{sample}_bamCompare.tsv"
     shell:
      """
-     bamCompare -b1 {input.exp} -b2 {input.ctrl} -o {output} -p {threads} --scaleFactorsMethod SES --effectiveGenomeSize {config[genome_size]} --normalizeUsing RPGC --ignoreDuplicates &> {log}
+     bamCompare -b1 {input.exp} -b2 {input.ctrl} -o {output} -p {threads} --scaleFactorsMethod SES --effectiveGenomeSize {config[genome_size]} --ignoreDuplicates --extendReads 150 &> {log}
      """
 
 rule multiBigwigSummary:
@@ -89,7 +89,7 @@ rule calcJSD:
 rule gatherJSD:
     input: expand("Results/metrics/{rep}_{tissue}_LibraryQC.tsv", rep = reps, tissue = tissues)
     output: "Results/metrics/QC_metrics.tsv"
-    script: "tools/gatherJSD.py"
+    script: "../tools/gatherJSD.py"
 
 rule plotPCA:
     input: "Results/deeptools/multiBigwigSummary.npz"

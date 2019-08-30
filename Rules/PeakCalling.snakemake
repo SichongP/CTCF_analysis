@@ -25,7 +25,7 @@ rule callpeak:
     conda: "../envs/macs.yaml"
     shell:
      """
-     macs2 callpeak -t {input.treatment} -c {input.control} -n {wildcards.sample} --outdir "Results/macs2/" -B --SPMR -g {config[genome_size]} --keep-dup auto 2> {log}
+     macs2 callpeak -t {input.treatment} -c {input.control} -n {wildcards.sample} --outdir "Results/macs2/" -B --SPMR -g {config[genome_size]} --extsize 150 --keep-dup auto 2> {log}
      """
 
 rule getNarrowpeaks:
