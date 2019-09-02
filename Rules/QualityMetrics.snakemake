@@ -74,11 +74,11 @@ rule calcJSD:
         trt_bai = "Results/mapping/{sample}_filtered.bam.bai",
         ctrl_bai = "Results/mapping/{sample}_Input_filtered.bam.bai"
     output:
-        metric = temp("Results/metrics/{sample}_LibraryQC.tsv"),
+        metric = "Results/metrics/{sample}_LibraryQC.tsv",
         plot = "Results/figures/fingerprints/{sample}_Fingerprint.png"
     conda: "../envs/deeptools.yaml"
     params: time = "60"
-    threads: 4
+    threads: 2
     log: "Results/logs/deeptools/{sample}_JSD.log"
     benchmark: "Results/benchmarks/{sample}_JSD.tsv"
     shell:
@@ -90,6 +90,19 @@ rule gatherJSD:
     input: expand("Results/metrics/{rep}_{tissue}_LibraryQC.tsv", rep = reps, tissue = tissues)
     output: "Results/metrics/QC_metrics.tsv"
     script: "../tools/gatherJSD.py"
+
+rule Calc_QCMetrics:
+    input:
+        spp = expand("Results/metrics/spp/{rep}_{tissue}_spp_stats.txt", rep = reps, tissue = tissues),
+        JSD = expand("Results/metrics/{rep}_{tissue}_LibraryQC.tsv", rep = reps, tissue = tissues),
+        bam = expand("Results/mapping/{rep}_{tissue}_markdup.bam", rep = reps, tissue = tissues),
+        filt_bam = expand("Results/mapping/{rep}_{tissue}_filtered.bam", rep = reps, tissue = tissues)
+    output: "Results/metrics/LibQ_Metrics.tsv"
+    conda: "../envs/bedtools.yaml"
+    params: time = "90", samples = expand("{rep}_{tissue}", rep = reps, tissue = tissues)
+    log: "Results/logs/deeptools/LibQC.log"
+    script: "../tools/calcQCMetrics.py"
+
 
 rule plotPCA:
     input: "Results/deeptools/multiBigwigSummary.npz"
