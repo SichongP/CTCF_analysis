@@ -1,0 +1,69 @@
+localrules: peak_summary, merged_peak_summary
+rule calc_frip:
+    input: 
+        bam = "Results/mapping/{sample}_filtered.bam",
+        bai = "Results/mapping/{sample}_filtered.bam.bai",
+        peak = "Results/macs2/{sample}_peaks.narrowPeak"
+    output:
+        metrics = "Results/metrics/FRiP/{sample}_FRiP.txt",
+        figure = "Results/figures/FRiP/{sample}_FRiP.png"
+    conda: "../envs/deeptools.yaml"
+    params: time = "60"
+    threads: 12
+    shell:
+     '''
+     plotEnrichment --bamfiles {input.bam} --BED {input.peak} -o {output.figure} --outRawCounts {output.metrics} -e 150 -p {threads}
+     '''
+
+rule combined_IDR_frip:
+    input:
+        bam = expand("Results/mapping/{rep}_{{tissue}}_filtered.bam", rep = reps),
+        bai = expand("Results/mapping/{rep}_{{tissue}}_filtered.bam.bai", rep = reps),
+        peak = "Results/peaks_IDR/{tissue}/{tissue}.peaks"
+    output:
+        metrics = "Results/metrics/FRiP/{tissue}_IDR_FRiP.txt",
+        figure = "Results/figures/FRiP/{tissue}_IDR_FRiP.png",
+    conda: "../envs/deeptools.yaml"
+    params: time = "90"
+    threads: 12
+    shell:
+     """
+     plotEnrichment --bamfiles {input.bam} --BED {input.peak} -o {output.figure} --outRawCounts {output.metrics} -e 150 -p {threads}
+     """
+
+
+rule combined_MSPC_frip:
+    input:
+        bam = expand("Results/mapping/{rep}_{{tissue}}_filtered.bam", rep = reps),
+        bai = expand("Results/mapping/{rep}_{{tissue}}_filtered.bam.bai", rep = reps),
+        peak = "Results/peaks/{tissue}.concensus.bed"
+    output:
+        metrics = "Results/metrics/FRiP/{tissue}_FRiP.txt",
+        figure = "Results/figures/FRiP/{tissue}_FRiP.png",
+        temp_peak = temp("Results/peaks/{tissue}.concensus.bed_temp")
+    conda: "../envs/deeptools.yaml"
+    params: time = "90"
+    threads: 12
+    shell:
+     """
+     tail -n+2 {input.peak} > {input.peak}_temp
+     plotEnrichment --bamfiles {input.bam} --BED {input.peak}_temp -o {output.figure} --outRawCounts {output.metrics} -e 150 -p {threads}
+     """
+
+rule peak_summary:
+    input: 
+        expand("Results/macs2/{rep}_{tissue}_peaks.narrowPeak", rep = reps, tissue = tissues),
+        expand("Results/peaks/{tissue}.concensus.bed_temp", tissue = tissues)
+    output: "Results/metrics/peak_summary.tsv"
+    params: time = "120", reps = expand("{rep}", rep = reps), tissues = expand("{tissue}", tissue = tissues)
+    script: "../tools/Peak_Metrics.py"
+
+rule merged_peak_summary:
+    input:
+        expand("Results/peaks/{tissue}.concensus.bed_temp", tissue = tissues),
+        expand("Results/peaks_IDR/{tissue}/{tissue}.peaks", tissue = tissues),
+        expand("Results/metrics/FRiP/{tissue}_IDR_FRiP.txt", tissue = tissues),
+        expand("Results/metrics/FRiP/{tissue}_FRiP.txt", tissue = tissues)
+    output: "Results/metrics/merged_peak_summary.tsv"
+    params: time = "120", reps = expand("{rep}", rep = reps), tissues = expand("{tissue}", tissue = tissues)
+    script: "../tools/MergedPeak_Metrics.py"
