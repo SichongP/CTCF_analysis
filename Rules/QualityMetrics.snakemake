@@ -74,7 +74,7 @@ rule calcJSD:
         trt_bai = "Results/mapping/{sample}_filtered.bam.bai",
         ctrl_bai = "Results/mapping/{sample}_Input_filtered.bam.bai"
     output:
-        metric = "Results/metrics/{sample}_LibraryQC.tsv",
+        metric = temp("Results/metrics/{sample}_LibraryQC.tsv"),
         plot = "Results/figures/fingerprints/{sample}_Fingerprint.png"
     conda: "../envs/deeptools.yaml"
     params: time = "60"

@@ -33,3 +33,9 @@ plotFingerprint_all:
 
 spp_stats:
   mem: "8g"
+
+Calc_QCMetrics:
+  mem: "12g"
+
+IDR_peaks:
+  mem: "6g"

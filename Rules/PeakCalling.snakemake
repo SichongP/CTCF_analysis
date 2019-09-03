@@ -1,4 +1,4 @@
-localrules: getNarrowpeaks
+localrules: getNarrowpeaks, sort_peakfile, moveIDRgraph
 ###
 #This rule collection describes rules to call peaks on mapped data, and generate concensus peaks from replicates
 ###
@@ -46,7 +46,7 @@ rule install_mspc:
      bash tools/mspc_install.sh &> {log}
      """
 
-rule concensus_peaks:
+rule concensus_peaks_mspc:
     input:
         tool = "tools/mspc/CLI.dll",
         repA = expand("Results/peaks/{rep}_{{sample}}.bed", rep = reps[0]),
@@ -61,3 +61,28 @@ rule concensus_peaks:
      cp Results/peaks/{wildcards.sample}/ConsensusPeaks.bed Results/peaks/{wildcards.sample}.concensus.bed
      """
 
+rule sort_peakfile:
+    input: "Results/macs2/{sample}_peaks.narrowPeak"
+    output: temp("Results/macs2/{sample}_peaks.narrowPeak.sortedbyP")
+    shell:
+     '''
+     sort -k8,8nr {input} > {output}
+     '''
+
+rule IDR_peaks:
+    input: expand("Results/macs2/{rep}_{{tissue}}_peaks.narrowPeak.sortedbyP", rep = reps)
+    output: peaks = "Results/peaks_IDR/{tissue}/{tissue}.peaks", log = "Results/peaks_IDR/{tissue}/{tissue}.log", figure = "Results/peaks_IDR/{tissue}/{tissue}.peaks.png"
+    conda: "../envs/idr.yaml"
+    params: time = "30"
+    shell:
+     '''
+     idr --samples {input} --input-file-type narrowPeak --rank p.value --output-file {output.peaks} --plot --log-output-file {output.log}
+     '''
+
+rule moveIDRgraph:
+    input: "Results/peaks_IDR/{tissue}/{tissue}.peaks.png"
+    output: "Results/figures/IDR/{tissue}.png"
+    shell:
+     '''
+     mv {input} {output}
+     '''
