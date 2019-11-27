@@ -1,0 +1,86 @@
+localrules: pool_pr1, pool_pr2, moveIDRgraph_idr, sort_peakfile_idr
+rule make_pseudoreplicates:
+    input: "Results/tagAlign/{sample}.tagAlign.gz"
+    output: pr1 = temp("Results/IDR/{sample}.pr1.tagAlign.gz"), pr2 = temp("Results/IDR/{sample}.pr2.tagAlign.gz")
+    params: time = "60"
+    shell:
+     """
+     nlines=$( zcat {input} | wc -l )
+     nlines=$(( (nlines + 1) / 2 ))
+     zcat {input} | shuf --random-source={input} | split -d -l ${{nlines}} - Results/IDR/{wildcards.sample}
+     gzip -nc "Results/IDR/{wildcards.sample}00" > {output.pr1}
+     rm "Results/IDR/{wildcards.sample}00"
+     gzip -nc "Results/IDR/{wildcards.sample}01" > {output.pr2}
+     rm "Results/IDR/{wildcards.sample}01"
+     """
+
+rule pool_pr1:
+    input: expand("Results/IDR/{rep}_{{tissue}}.pr1.tagAlign.gz", rep = reps)
+    output: "Results/IDR/{tissue}_pr1_pooled.tagAlign.gz"
+    params: time = "30"
+    shell:
+     """
+     zcat {input} | gzip -nc > {output}
+     """
+
+rule pool_pr2:
+    input: expand("Results/IDR/{rep}_{{tissue}}.pr2.tagAlign.gz", rep = reps)
+    output: "Results/IDR/{tissue}_pr2_pooled.tagAlign.gz"
+    params: time = "30"
+    shell:
+     """
+     zcat {input} | gzip -nc > {output}
+     """
+
+rule callIDRPeaks:
+    input:
+        treatment = "Results/IDR/{tissue}_{pr}_pooled.tagAlign.gz",
+        control = "Results/IDR/{tissue}_Input_{pr}_pooled.tagAlign.gz"
+    output: "Results/IDR/macs2/{tissue}_{pr}_peaks.narrowPeak"
+    log: "Results/logs/macs2/{tissue}_{pr}_callpeak.log"
+    params: time = "60"
+    conda: "../envs/macs.yaml"
+    shell:
+     """
+     macs2 callpeak -t {input.treatment} -c {input.control} -n {wildcards.tissue}_{wildcards.pr} --outdir "Results/IDR/macs2/" -g {config[genome_size]} --extsize 150 --keep-dup all 2> {log}
+     """
+
+rule concensus_peaks_mspc_idr:
+    input:
+        tool = "tools/mspc/CLI.dll",
+        pr1 = "Results/IDR/macs2/{tissue}_pr1_peaks.narrowPeak",
+        pr2 = "Results/IDR/macs2/{tissue}_pr2_peaks.narrowPeak"
+    output: "Results/IDR/concensus_peaks/mspc/{tissue}.concensus.bed"
+    log: "Results/logs/mspc/{tissue}_concensus_call.log"
+    params: time = "10"
+    shell:
+     """
+     tools/mspc/dotnet tools/mspc/CLI.dll -i {input.pr1} -i {input.pr2} -r biological -w 1e-4 -s 1e-8 -a 0.05 -o Results/IDR/peaks/mspc/{wildcards.tissue}/ &> {log}
+     cp Results/IDR/peaks/mspc/{wildcards.tissue}/ConsensusPeaks.bed {output}
+     """
+
+rule sort_peakfile_idr:
+    input: "Results/IDR/macs2/{sample}_peaks.narrowPeak"
+    output: temp("Results/IDR/macs2/{sample}_peaks.narrowPeak.sortedbyP")
+    shell:
+     '''
+     sort -k8,8nr {input} > {output}
+     '''
+
+rule IDR_peaks_idr:
+    input: expand("Results/IDR/macs2/{{tissue}}_{rep}_peaks.narrowPeak.sortedbyP", rep = ["pr1","pr2"])
+    output: peaks = "Results/IDR/concensus_peaks/IDR/{tissue}/{tissue}.peaks", log = "Results/IDR/concensus_peaks/IDR/{tissue}/{tissue}.log", figure = "Results/IDR/concensus_peaks/IDR/{tissue}/{tissue}.peaks.png"
+    conda: "../envs/idr.yaml"
+    params: time = "30"
+    shell:
+     '''
+     idr --samples {input} --input-file-type narrowPeak --rank p.value --output-file {output.peaks} --plot --log-output-file {output.log}
+     '''
+
+rule moveIDRgraph_idr:
+    input: "Results/IDR/concensus_peaks/IDR/{tissue}/{tissue}.peaks.png"
+    output: "Results/figures/pseudopeaks/idr_{tissue}.png"
+    shell:
+     '''
+     mv {input} {output}
+     '''
