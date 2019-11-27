@@ -11,14 +11,13 @@ localrules: getNarrowpeaks, sort_peakfile, moveIDRgraph
 #Results/peaks/{tissue}.concensus.bed
 ###
 
-
 rule callpeak:
     input:
         treatment = "Results/mapping/{sample}_filtered.bam",
         control = "Results/mapping/{sample}_Input_filtered.bam",
         trt_bai = "Results/mapping/{sample}_filtered.bam.bai",
         ctrl_bai = "Results/mapping/{sample}_Input_filtered.bam.bai"
-    output: "Results/macs2/{sample}_peaks.narrowPeak"
+    output: "Results/macs2/{sample}_peaks.narrowPeak", "Results/macs2/{sample}_treat_pileup.bdg"
     log: "Results/logs/macs2/{sample}_callpeak.log"
     benchmark: "Results/benchmarks/macs2/{sample}_callpeak.tsv"
     params: time = "60"
@@ -86,3 +85,18 @@ rule moveIDRgraph:
      '''
      mv {input} {output}
      '''
+
+rule fold_enrichment:
+    input: 
+        treat = "Results/macs2/{sample}_treat_pileup.bdg",
+        ctrl = "Results/macs2/{sample}_control_lambda.bdg"
+    output: "Results/macs2/{sample}_FoldEnrichment.bdg"
+    conda: "../envs/macs.yaml"
+    params: time = "60"
+    shell:
+     """
+     macs2 bdgcmp -t {input.treat} -c {input.ctrl} -o {output}_temp -m FE -p 0.000001
+     sort -k1,1 -k2,2n -o {output} {output}_temp
+     rm {output}_temp
+     """
+
