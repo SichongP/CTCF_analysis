@@ -1,0 +1,10 @@
+rule findMotifs:
+    input: "Results/peaks/{tissue}.concensus.bed"
+    output: "Results/motifs/{tissue}/homerMotifs.all.motifs"
+    params: time = 240
+    conda: "../envs/homer.yaml"
+    threads: 8
+    shell:
+     """
+     findMotifsGenome.pl {input} ~/reference/equcab3/equcab3_RefSeq_genomic.fna "Results/motifs/{wildcards.tissue}/" -p {threads}
+     """
