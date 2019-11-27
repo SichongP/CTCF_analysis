@@ -72,8 +72,18 @@ rule all:
         "Results/metrics/peak_summary.tsv",
         expand("Results/peaks_IDR/{tissue}/{tissue}.peaks", tissue = tissues),
         expand("Results/figures/IDR/{tissue}.png", tissue = tissues),
-        "Results/metrics/merged_peak_summary.tsv"
-#        expand("Results/metrics/{rep}_{sample}_LibraryQC.tsv", sample = tissues, rep = reps)
+        "Results/metrics/merged_peak_summary.tsv",
+#        expand("Results/tagAlign/{rep}_{tissue}{input}.tagAlign", rep = reps, tissue = tissues, input = ["","_Input"]),
+        expand("Results/motifs/{tissue}/homerMotifs.all.motifs", tissue = tissues),
+        expand("Results/macs2/{rep}_{tissue}_FoldEnrichment.bdg", rep = reps, tissue = tissues),
+        expand("Results/IDR/{tissue}_pr1_pooled.tagAlign.gz", rep = reps, tissue = tissues),
+        expand("Results/IDR/{tissue}_pr2_pooled.tagAlign.gz", rep = reps, tissue = tissues),
+        expand("Results/IDR/{tissue}_Input_pr1_pooled.tagAlign.gz", rep = reps, tissue = tissues),
+        expand("Results/IDR/{tissue}_Input_pr2_pooled.tagAlign.gz", rep = reps, tissue = tissues),
+        expand("Results/IDR/macs2/{tissue}_{pr}_peaks.narrowPeak", tissue = tissues, pr = ["pr1", "pr2"]),
+        expand("Results/IDR/concensus_peaks/mspc/{sample}.concensus.bed", sample = tissues),
+        expand("Results/IDR/concensus_peaks/IDR/{sample}/{sample}.peaks", sample = tissues),
+        expand("Results/figures/pseudopeaks/idr_{sample}.png", sample = tissues),
 
 rule sourmash_sig:
     input: "raw_data/{sample}.fq.gz"
@@ -104,3 +114,5 @@ include: "Rules/MappingStats.snakemake"
 include: "Rules/PeakCalling.snakemake"
 include: "Rules/QualityMetrics.snakemake"
 include: "Rules/PeakMetrics.snakemake"
+include: "Rules/Motifs.snakemake"
+include: "Rules/IDR.snakemake"
