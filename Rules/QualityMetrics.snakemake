@@ -1,4 +1,4 @@
-localrules: gatherJSD
+localrules: gatherJSD, compresstagAlign
 ###
 #This rule collection describes rules to generate quality metrics from CTCF ChIPseq
 ###
@@ -11,6 +11,24 @@ localrules: gatherJSD
 #Results/metrics/Quality_Metrics.csv
 #Results/figures/
 ###
+
+rule bamToTagAlign:
+    input: "Results/mapping/{sample}_filtered.bam"
+    output: "Results/tagAlign/{sample}.tagAlign"
+    params: time="30"
+    conda: "../envs/samtools.yaml"
+    shell:
+     """
+     samtools view -F 0x0204 -o - {input} | awk 'BEGIN{{FS="\t";OFS="\t"}} {{if (and($2,16) > 0) {{print $3,($4-1),($4-1+length($10)),"N","1000","-"}} else {{print $3,($4-1),($4-1+length($10)),"N","1000","+"}}}}' > {output}
+     """
+
+rule compresstagAlign:
+    input: "Results/tagAlign/{sample}.tagAlign"
+    output: "Results/tagAlign/{sample}.tagAlign.gz"
+    shell:
+     """
+     gzip {input}
+     """    
 
 rule spp_stats:
     input: "Results/mapping/{sample}_filtered.bam"
