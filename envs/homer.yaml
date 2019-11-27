@@ -1,0 +1,13 @@
+name: homer
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - _libgcc_mutex=0.1=main
+  - homer=4.9.1=pl526h2d50403_6
+  - libgcc-ng=9.1.0=hdf63c60_0
+  - libstdcxx-ng=9.1.0=hdf63c60_0
+  - perl=5.26.2=h516909a_1006
+prefix: /home/pengsc/bin/miniconda3/envs/homer
+
