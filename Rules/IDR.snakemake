@@ -1,7 +1,7 @@
 localrules: pool_pr1, pool_pr2, moveIDRgraph_idr, sort_peakfile_idr
 rule make_pseudoreplicates:
     input: "Results/tagAlign/{sample}.tagAlign.gz"
-    output: pr1 = temp("Results/IDR/{sample}.pr1.tagAlign.gz"), pr2 = temp("Results/IDR/{sample}.pr2.tagAlign.gz")
+    output: pr1 = temp("Results/IDR/tagAlign/{sample}.pr1.tagAlign.gz"), pr2 = temp("Results/IDR/tagAlign/{sample}.pr2.tagAlign.gz")
     params: time = "60"
     shell:
      """
@@ -15,8 +15,8 @@ rule make_pseudoreplicates:
      """
 
 rule pool_pr1:
-    input: expand("Results/IDR/{rep}_{{tissue}}.pr1.tagAlign.gz", rep = reps)
-    output: "Results/IDR/{tissue}_pr1_pooled.tagAlign.gz"
+    input: expand("Results/IDR/tagAlign/{rep}_{{tissue}}.pr1.tagAlign.gz", rep = reps)
+    output: "Results/IDR/tagAlign/{tissue}_pr1_pooled.tagAlign.gz"
     params: time = "30"
     shell:
      """
@@ -24,8 +24,8 @@ rule pool_pr1:
      """
 
 rule pool_pr2:
-    input: expand("Results/IDR/{rep}_{{tissue}}.pr2.tagAlign.gz", rep = reps)
-    output: "Results/IDR/{tissue}_pr2_pooled.tagAlign.gz"
+    input: expand("Results/IDR/tagAlign/{rep}_{{tissue}}.pr2.tagAlign.gz", rep = reps)
+    output: "Results/IDR/tagAlign/{tissue}_pr2_pooled.tagAlign.gz"
     params: time = "30"
     shell:
      """
@@ -34,8 +34,8 @@ rule pool_pr2:
 
 rule callIDRPeaks:
     input:
-        treatment = "Results/IDR/{tissue}_{pr}_pooled.tagAlign.gz",
-        control = "Results/IDR/{tissue}_Input_{pr}_pooled.tagAlign.gz"
+        treatment = "Results/IDR/tagAlign/{tissue}_{pr}_pooled.tagAlign.gz",
+        control = "Results/IDR/tagAlign/{tissue}_Input_{pr}_pooled.tagAlign.gz"
     output: "Results/IDR/macs2/{tissue}_{pr}_peaks.narrowPeak"
     log: "Results/logs/macs2/{tissue}_{pr}_callpeak.log"
     params: time = "60"
