@@ -10,6 +10,9 @@ __default__:
   email_type: "FAIL"
   mem: "2g"
 
+peakIntervalStats:
+  mem: "8g"
+
 callIDRPeaks:
   mem: "5g"
 
