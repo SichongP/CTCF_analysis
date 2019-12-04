@@ -79,3 +79,70 @@ rule merged_peak_summary:
     output: "Results/metrics/merged_peak_summary.tsv"
     params: time = "120", reps = expand("{rep}", rep = reps), tissues = expand("{tissue}", tissue = tissues)
     script: "../tools/MergedPeak_Metrics.py"
+
+rule peakJaccard:
+    input: 
+        repA = expand("Results/macs2/{rep}_{{tissue}}_peaks.narrowPeak", rep = config["reps"][0]),
+        repB = expand("Results/macs2/{rep}_{{tissue}}_peaks.narrowPeak", rep = config["reps"][1]),
+        IDRpr1 = "Results/IDR/macs2/{tissue}_pr1_peaks.narrowPeak",
+        IDRpr2 = "Results/IDR/macs2/{tissue}_pr2_peaks.narrowPeak",
+        concensus = "Results/peaks/{tissue}.concensus.bed",
+        IDRconcensus = "Results/IDR/concensus_peaks/mspc/{tissue}.concensus.bed"
+    output:
+        reps = "Results/metrics/jaccard/{tissue}_betweenReps.txt",
+        IDRprs = "Results/metrics/jaccard/{tissue}_IDRprs.txt",
+        IDRconcensus = "Results/metrics/jaccard/{tissue}_conensus_vs_IDR.txt"
+    conda: "../envs/bedtools.yaml"
+    params: time = "30"
+    shell:
+     """
+     bedtools jaccard -a {input.repA} -b {input.repB} -f 0.5 -F 0.5 > {output.reps}
+     bedtools jaccard -a {input.IDRpr1} -b {input.IDRpr2} -f 0.5 -F 0.5 > {output.IDRprs}
+     bedtools jaccard -a {input.concensus} -b {input.IDRconcensus} -f 0.5 -F 0.5 > {output.IDRconcensus}
+     """
+
+rule peakFisher:
+    input:
+        repA = expand("Results/macs2/{rep}_{{tissue}}_peaks.narrowPeak", rep = config["reps"][0]),
+        repB = expand("Results/macs2/{rep}_{{tissue}}_peaks.narrowPeak", rep = config["reps"][1]),
+        IDRpr1 = "Results/IDR/macs2/{tissue}_pr1_peaks.narrowPeak",
+        IDRpr2 = "Results/IDR/macs2/{tissue}_pr2_peaks.narrowPeak",
+        concensus = "Results/peaks/{tissue}.concensus.bed",
+        IDRconcensus = "Results/IDR/concensus_peaks/mspc/{tissue}.concensus.bed",
+        genome = "/home/pengsc/reference/equcab3/chrom_sizes_RefSeq_sorted.txt"
+    output:
+        reps = "Results/metrics/fisher/{tissue}_betweenReps.txt",
+        IDRprs = "Results/metrics/fisher/{tissue}_IDRprs.txt",
+        IDRconcensus = "Results/metrics/fisher/{tissue}_conensus_vs_IDR.txt"
+    conda: "../envs/bedtools.yaml"
+    params: time = "30"
+    shell:
+     """
+     bedtools fisher -a {input.repA} -b {input.repB} -g {input.genome} -f 0.5 -F 0.5 > {output.reps}
+     bedtools fisher -a {input.IDRpr1} -b {input.IDRpr2} -g {input.genome} -f 0.5 -F 0.5 > {output.IDRprs}
+     bedtools fisher -a {input.concensus} -b {input.IDRconcensus} -g {input.genome} -f 0.5 -F 0.5 > {output.IDRconcensus}
+     """
+
+
+rule peakIntervalStats:
+    input:
+        repA = expand("Results/macs2/{rep}_{{tissue}}_peaks.narrowPeak", rep = config["reps"][0]),
+        repB = expand("Results/macs2/{rep}_{{tissue}}_peaks.narrowPeak", rep = config["reps"][1]),
+        IDRpr1 = "Results/IDR/macs2/{tissue}_pr1_peaks.narrowPeak",
+        IDRpr2 = "Results/IDR/macs2/{tissue}_pr2_peaks.narrowPeak",
+        concensus = "Results/peaks/{tissue}.concensus.bed",
+        IDRconcensus = "Results/IDR/concensus_peaks/mspc/{tissue}.concensus.bed",
+        genome = "/home/pengsc/reference/equcab3/chroms.bed"
+    output:
+        reps = "Results/metrics/intervalStats/{tissue}_betweenReps.txt",
+        IDRprs = "Results/metrics/intervalStats/{tissue}_IDRprs.txt",
+        IDRconcensus = "Results/metrics/intervalStats/{tissue}_conensus_vs_IDR.txt"
+    conda: "../envs/bedtools.yaml"
+    params: time = "30"
+    shell:
+     """
+     tools/intervalStats/IntervalStats -r {input.repA} -q {input.repB} -d {input.genome} -o {output.reps}
+     tools/intervalStats/IntervalStats -r {input.IDRpr1} -q {input.IDRpr2} -d {input.genome} -o {output.IDRprs}
+     tools/intervalStats/IntervalStats -r {input.IDRconcensus} -q {input.concensus} -d {input.genome} -o {output.IDRconcensus}
+     """
+
