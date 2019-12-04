@@ -76,14 +76,18 @@ rule all:
 #        expand("Results/tagAlign/{rep}_{tissue}{input}.tagAlign", rep = reps, tissue = tissues, input = ["","_Input"]),
         expand("Results/motifs/{tissue}/homerMotifs.all.motifs", tissue = tissues),
         expand("Results/macs2/{rep}_{tissue}_FoldEnrichment.bdg", rep = reps, tissue = tissues),
-        expand("Results/IDR/{tissue}_pr1_pooled.tagAlign.gz", rep = reps, tissue = tissues),
-        expand("Results/IDR/{tissue}_pr2_pooled.tagAlign.gz", rep = reps, tissue = tissues),
-        expand("Results/IDR/{tissue}_Input_pr1_pooled.tagAlign.gz", rep = reps, tissue = tissues),
-        expand("Results/IDR/{tissue}_Input_pr2_pooled.tagAlign.gz", rep = reps, tissue = tissues),
-        expand("Results/IDR/macs2/{tissue}_{pr}_peaks.narrowPeak", tissue = tissues, pr = ["pr1", "pr2"]),
-        expand("Results/IDR/concensus_peaks/mspc/{sample}.concensus.bed", sample = tissues),
-        expand("Results/IDR/concensus_peaks/IDR/{sample}/{sample}.peaks", sample = tissues),
         expand("Results/figures/pseudopeaks/idr_{sample}.png", sample = tissues),
+        expand("Results/metrics/jaccard/{tissue}_betweenReps.txt", tissue = tissues),
+        expand("Results/metrics/jaccard/{tissue}_IDRprs.txt", tissue = tissues),
+        expand("Results/metrics/jaccard/{tissue}_conensus_vs_IDR.txt", tissue = tissues),
+        expand("Results/metrics/fisher/{tissue}_betweenReps.txt", tissue = tissues),
+        expand("Results/metrics/fisher/{tissue}_IDRprs.txt", tissue = tissues),
+        expand("Results/metrics/fisher/{tissue}_conensus_vs_IDR.txt", tissue = tissues),
+        expand("Results/metrics/intervalStats/{tissue}_betweenReps.txt", tissue = tissues),
+        expand("Results/metrics/intervalStats/{tissue}_IDRprs.txt", tissue = tissues),
+        expand("Results/metrics/intervalStats/{tissue}_conensus_vs_IDR.txt", tissue = tissues)
+
+
 
 rule sourmash_sig:
     input: "raw_data/{sample}.fq.gz"
