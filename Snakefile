@@ -49,6 +49,8 @@ def calc_genome_bg(wildcards):
 
 rule all:
     input:
+        "Results/figures/Jaccard_plot_withinTissue.jpg",
+        "Results/figures/interval_plot_withinTissue.jpg",
         "Results/metrics/mapping_stats.csv",
         "Results/metrics/filtered_stats.csv",
         "Results/figures/PCA.png",
@@ -76,17 +78,7 @@ rule all:
 #        expand("Results/tagAlign/{rep}_{tissue}{input}.tagAlign", rep = reps, tissue = tissues, input = ["","_Input"]),
         expand("Results/motifs/{tissue}/homerMotifs.all.motifs", tissue = tissues),
         expand("Results/macs2/{rep}_{tissue}_FoldEnrichment.bdg", rep = reps, tissue = tissues),
-        expand("Results/figures/pseudopeaks/idr_{sample}.png", sample = tissues),
-        expand("Results/metrics/jaccard/{tissue}_betweenReps.txt", tissue = tissues),
-        expand("Results/metrics/jaccard/{tissue}_IDRprs.txt", tissue = tissues),
-        expand("Results/metrics/jaccard/{tissue}_conensus_vs_IDR.txt", tissue = tissues),
-        expand("Results/metrics/fisher/{tissue}_betweenReps.txt", tissue = tissues),
-        expand("Results/metrics/fisher/{tissue}_IDRprs.txt", tissue = tissues),
-        expand("Results/metrics/fisher/{tissue}_conensus_vs_IDR.txt", tissue = tissues),
-        expand("Results/metrics/intervalStats/{tissue}_betweenReps.txt", tissue = tissues),
-        expand("Results/metrics/intervalStats/{tissue}_IDRprs.txt", tissue = tissues),
-        expand("Results/metrics/intervalStats/{tissue}_conensus_vs_IDR.txt", tissue = tissues)
-
+        expand("Results/figures/pseudopeaks/idr_{sample}.png", sample = tissues)
 
 
 rule sourmash_sig:
