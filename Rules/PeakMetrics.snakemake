@@ -1,4 +1,4 @@
-localrules: peak_summary, merged_peak_summary, makeTempPeakFile
+localrules: peak_summary, merged_peak_summary, makeTempPeakFile, gatherJaccard, plotPeakMetrics
 rule calc_frip:
     input: 
         bam = "Results/mapping/{sample}_filtered.bam",
@@ -91,7 +91,7 @@ rule peakJaccard:
     output:
         reps = "Results/metrics/jaccard/{tissue}_betweenReps.txt",
         IDRprs = "Results/metrics/jaccard/{tissue}_IDRprs.txt",
-        IDRconcensus = "Results/metrics/jaccard/{tissue}_conensus_vs_IDR.txt"
+        IDRconcensus = "Results/metrics/jaccard/{tissue}_concensus_vs_IDR.txt"
     conda: "../envs/bedtools.yaml"
     params: time = "30"
     shell:
@@ -100,6 +100,11 @@ rule peakJaccard:
      bedtools jaccard -a {input.IDRpr1} -b {input.IDRpr2} -f 0.5 -F 0.5 > {output.IDRprs}
      bedtools jaccard -a {input.concensus} -b {input.IDRconcensus} -f 0.5 -F 0.5 > {output.IDRconcensus}
      """
+
+rule gatherJaccard:
+    input: expand("Results/metrics/jaccard/{tissue}_{comp}.txt", tissue = tissues, comp = ["betweenReps", "IDRprs", "concensus_vs_IDR"])
+    output: "Results/metrics/Jaccard.txt"
+    script: "../tools/gatherjaccard.py"
 
 rule peakFisher:
     input:
@@ -113,7 +118,7 @@ rule peakFisher:
     output:
         reps = "Results/metrics/fisher/{tissue}_betweenReps.txt",
         IDRprs = "Results/metrics/fisher/{tissue}_IDRprs.txt",
-        IDRconcensus = "Results/metrics/fisher/{tissue}_conensus_vs_IDR.txt"
+        IDRconcensus = "Results/metrics/fisher/{tissue}_concensus_vs_IDR.txt"
     conda: "../envs/bedtools.yaml"
     params: time = "30"
     shell:
@@ -122,7 +127,6 @@ rule peakFisher:
      bedtools fisher -a {input.IDRpr1} -b {input.IDRpr2} -g {input.genome} -f 0.5 -F 0.5 > {output.IDRprs}
      bedtools fisher -a {input.concensus} -b {input.IDRconcensus} -g {input.genome} -f 0.5 -F 0.5 > {output.IDRconcensus}
      """
-
 
 rule peakIntervalStats:
     input:
@@ -136,7 +140,7 @@ rule peakIntervalStats:
     output:
         reps = "Results/metrics/intervalStats/{tissue}_betweenReps.txt",
         IDRprs = "Results/metrics/intervalStats/{tissue}_IDRprs.txt",
-        IDRconcensus = "Results/metrics/intervalStats/{tissue}_conensus_vs_IDR.txt"
+        IDRconcensus = "Results/metrics/intervalStats/{tissue}_concensus_vs_IDR.txt"
     conda: "../envs/bedtools.yaml"
     params: time = "30"
     shell:
@@ -146,3 +150,12 @@ rule peakIntervalStats:
      tools/intervalStats/IntervalStats -r {input.IDRconcensus} -q {input.concensus} -d {input.genome} -o {output.IDRconcensus}
      """
 
+rule plotPeakMetrics:
+    input:
+        jaccard = "Results/metrics/Jaccard.txt",
+        interval = expand("Results/metrics/intervalStats/{tissue}_{comp}.txt", tissue = tissues, comp = ["betweenReps", "IDRprs", "concensus_vs_IDR"])
+    output:
+        jaccard = "Results/figures/Jaccard_plot_withinTissue.jpg",
+        interval = "Results/figures/interval_plot_withinTissue.jpg"
+    conda: "../envs/Rplot.yaml"
+    script: "../tools/plotPeakMetrics.R"
