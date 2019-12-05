@@ -1,3 +1,3 @@
 genome_size: 2497530671
 reps: [CP, GS]
-tissues: [Adipose, Brain, Heart, Lamina, Liver, Lung, Muscle, Ovary]
+tissues: [Adipose, Brain, Heart, Lamina, Liver, Lung, Muscle, Ovary, AdiposeDown, LungDown]
