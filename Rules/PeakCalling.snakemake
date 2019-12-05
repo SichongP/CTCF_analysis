@@ -17,7 +17,7 @@ rule callpeak:
         control = "Results/mapping/{sample}_Input_filtered.bam",
         trt_bai = "Results/mapping/{sample}_filtered.bam.bai",
         ctrl_bai = "Results/mapping/{sample}_Input_filtered.bam.bai"
-    output: "Results/macs2/{sample}_peaks.narrowPeak", "Results/macs2/{sample}_treat_pileup.bdg"
+    output: "Results/macs2/{sample}_peaks.narrowPeak", "Results/macs2/{sample}_treat_pileup.bdg", "Results/macs2/{sample}_control_lambda.bdg"
     log: "Results/logs/macs2/{sample}_callpeak.log"
     benchmark: "Results/benchmarks/macs2/{sample}_callpeak.tsv"
     params: time = "60"
