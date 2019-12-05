@@ -53,7 +53,7 @@ rule sort_bam:
     benchmark: "Results/benchmarks/mapping/sort_bam_{sample}.tsv"
     shell:
      """
-     samtools sort -@ {threads} -m 1G -T /scratch/peng/{sample} -o {output} {input}
+     samtools sort -@ {threads} -m 1G -T /scratch/peng/{wildcards.sample} -o {output} {input}
      """
 
 rule index_bam:
