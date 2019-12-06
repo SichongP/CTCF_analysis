@@ -1,0 +1,21 @@
+localrules: multiqc
+rule fastqc:
+    input: expand("raw_data/{rep}_{tissue}.fq.gz", rep = reps, tissue = tissues)
+    output: expand("Results/fastqc/{rep}_{tissue}_fastqc.html", rep = reps, tissue = tissues)
+    conda: "../envs/fastqc.yaml"
+    params: time = "240"
+    threads: 6
+    shell:
+     """
+     mkdir -p Results/fastqc
+     fastqc -t {threads} -o Results/fastqc {input}
+     """
+
+rule multiqc:
+    input: expand("Results/fastqc/{rep}_{tissue}_fastqc.html", rep = reps, tissue = tissues)
+    output: "Results/fastqc/raw_multiqc.html"
+    conda: "../envs/multiqc.yaml"
+    shell:
+     """
+     multiqc -o Results/fastqc/ -n raw_multiqc Results/fastqc/
+     """    
