@@ -63,7 +63,8 @@ rule combined_MSPC_frip:
 rule peak_summary:
     input: 
         expand("Results/macs2/{rep}_{tissue}_peaks.narrowPeak", rep = reps, tissue = tissues),
-        expand("Results/peaks/{tissue}.concensus.bed_temp", tissue = tissues)
+        expand("Results/peaks/{tissue}.concensus.bed_temp", tissue = tissues),
+        expand("Results/metrics/FRiP/{tissue}_FRiP.txt", tissue = tissues)
     output: "Results/metrics/peak_summary.tsv"
     params: time = "120", reps = expand("{rep}", rep = reps), tissues = expand("{tissue}", tissue = tissues)
     script: "../tools/Peak_Metrics.py"
