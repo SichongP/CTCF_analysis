@@ -73,7 +73,9 @@ rule multiBigwigSummary:
      """
 
 rule plotFingerprint_all:
-    input: expand("Results/mapping/{rep}_{sample}_filtered.bam", rep = reps, sample = tissues), expand("Results/mapping/{rep}_{sample}_filtered.bam.bai", rep = reps, sample = tissues)
+    input: 
+        bam = expand("Results/mapping/{rep}_{sample}_filtered.bam", rep = reps, sample = tissues), 
+        bai = expand("Results/mapping/{rep}_{sample}_filtered.bam.bai", rep = reps, sample = tissues)
     output:
         plot = "Results/figures/Fingerprint.png",
     conda: "../envs/deeptools.yaml"
@@ -82,7 +84,7 @@ rule plotFingerprint_all:
     log: "Results/logs/deeptools/fingerprint.log"
     shell:
      """
-     plotFingerprint --bamfiles {input} -o {output.plot} -p {threads} --skipZeros -T "Fingerprint plot" --smartLabels
+     plotFingerprint --bamfiles {input.bam} -o {output.plot} -p {threads} --skipZeros -T "Fingerprint plot" --smartLabels
      """
 
 rule calcJSD:
