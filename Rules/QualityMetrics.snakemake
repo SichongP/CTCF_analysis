@@ -73,7 +73,7 @@ rule multiBigwigSummary:
      """
 
 rule plotFingerprint_all:
-    input: expand("Results/mapping/{rep}_{sample}_filtered.bam", rep = reps, sample = tissues)
+    input: expand("Results/mapping/{rep}_{sample}_filtered.bam", rep = reps, sample = tissues), expand("Results/mapping/{rep}_{sample}_filtered.bam.bai", rep = reps, sample = tissues)
     output:
         plot = "Results/figures/Fingerprint.png",
     conda: "../envs/deeptools.yaml"
