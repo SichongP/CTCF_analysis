@@ -49,35 +49,31 @@ def calc_genome_bg(wildcards):
 
 rule all:
     input:
+        "Results/fastqc/raw_multiqc.html",
         "Results/figures/Jaccard_plot_withinTissue.jpg",
         "Results/figures/interval_plot_withinTissue.jpg",
         "Results/metrics/mapping_stats.csv",
         "Results/metrics/filtered_stats.csv",
         "Results/figures/PCA.png",
-#        "Results/figures/Fingerprint.png",
+        "Results/figures/Fingerprint.png",
         "Results/metrics/QC_metrics.tsv",
         "Results/figures/scatterplot_spearman.png",
         "Results/figures/scatterplot_pearson.png",
         "Results/figures/heatmap_spearman.png",
         "Results/figures/heatmap_pearson.png",
         "Results/metrics/LibQ_Metrics.tsv",
-#        expand("Results/macs2/filterdup/{sample}_filterdup.bed", sample = names),
-#        expand("Results/macs2/predictd/{sample}_predictedModel.R", sample = tissues),
-#        "Results/metrics/predictd_macs2.tsv",
-#        "Results/metrics/macs2_filterdup.tsv",
-#        expand("Results/macs2/pileup/{sample}_filterdup.pileup.bdg", sample = tissues)
-        expand("Results/peaks/{sample}.concensus.bed", sample = tissues),
-        expand("Results/mapping/beds/{rep}_{tissue}.bed", rep = reps, tissue = tissues),
+#        expand("Results/peaks/{sample}.concensus.bed", sample = tissues),
+#        expand("Results/mapping/beds/{rep}_{tissue}.bed", rep = reps, tissue = tissues),
         expand("Results/figures/{rep}_{tissue}_Cross_Correlation.pdf", rep = reps, tissue = tissues),
         expand("Results/metrics/FRiP/{rep}_{tissue}_FRiP.txt", rep = reps, tissue = tissues),
         expand("Results/metrics/FRiP/{tissue}_FRiP.txt", tissue = tissues),
         "Results/metrics/peak_summary.tsv",
-        expand("Results/peaks_IDR/{tissue}/{tissue}.peaks", tissue = tissues),
+#        expand("Results/peaks_IDR/{tissue}/{tissue}.peaks", tissue = tissues),
         expand("Results/figures/IDR/{tissue}.png", tissue = tissues),
         "Results/metrics/merged_peak_summary.tsv",
 #        expand("Results/tagAlign/{rep}_{tissue}{input}.tagAlign", rep = reps, tissue = tissues, input = ["","_Input"]),
         expand("Results/motifs/{tissue}/homerMotifs.all.motifs", tissue = tissues),
-        expand("Results/macs2/{rep}_{tissue}_FoldEnrichment.bdg", rep = reps, tissue = tissues),
+#        expand("Results/macs2/{rep}_{tissue}_FoldEnrichment.bdg", rep = reps, tissue = tissues),
         expand("Results/figures/pseudopeaks/idr_{sample}.png", sample = tissues)
 
 
@@ -112,3 +108,4 @@ include: "Rules/QualityMetrics.snakemake"
 include: "Rules/PeakMetrics.snakemake"
 include: "Rules/Motifs.snakemake"
 include: "Rules/IDR.snakemake"
+include: "Rules/ReadQuality.snakemake"
