@@ -10,6 +10,10 @@ __default__:
   email_type: "FAIL"
   mem: "2g"
 
+fastqc:
+  mem: "4g"
+  partition: "med"
+
 peakIntervalStats:
   mem: "8g"
 
@@ -26,7 +30,7 @@ bwa_mem:
   mem: "30g"
 
 sort_bam:
-  mem: "5g"
+  mem: "7g"
 
 callpeak:
   mem: "5g"
