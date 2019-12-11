@@ -17,7 +17,7 @@
 ###
 
 rule bwa_mem:
-    input: "Results/sourmash_trimmed/{sample}.fq.gz.abundtrim"
+    input: "raw_data/{sample}.fq.gz"
     output: temp("Results/mapping/{sample}.sam")
     conda: "../envs/bwa.yaml"
     params: time="1-0"
@@ -53,7 +53,10 @@ rule sort_bam:
     benchmark: "Results/benchmarks/mapping/sort_bam_{sample}.tsv"
     shell:
      """
-     samtools sort -@ {threads} -m 1G -T /scratch/peng/{wildcards.sample} -o {output} {input}
+     cleanup() {{ rm -rf /scratch/pengsc/$SLURM_JOBID; }}
+     trap cleanup EXIT
+     mkdir -p /scratch/pengsc/$SLURM_JOBID/
+     samtools sort -@ {threads} -m 1G -T /scratch/pengsc/$SLURM_JOBID/ -o {output} {input}
      """
 
 rule index_bam:
